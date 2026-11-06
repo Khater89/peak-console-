@@ -6,7 +6,7 @@ Plain HTML/CSS/JS — no build step.
 ```
 index.html  style.css  app.js   ->  GitHub Pages  (the console)
 supabase/                       ->  Supabase project fbkrrzlwmygzdoozrlgg (already set up)
-n8n/peakpv-marketing-engine-v1.1.json  ->  n8n (the engine)
+n8n/peakpv-marketing-engine-v1.2.json  ->  n8n (the engine)
 ```
 
 ## 1. Console — GitHub Pages
@@ -33,19 +33,25 @@ Still to fill on `brands` (row `peakpv`): `whatsapp_url`, `contact_phone`, `logo
 
 ## 3. Engine — n8n
 Create the credentials listed in the workflow's **SETUP** note (exact names), import
-`n8n/peakpv-marketing-engine-v1.1.json`, set the Drive folder, and **activate** it.
+`n8n/peakpv-marketing-engine-v1.2.json`, set the Drive folder, and **activate** it.
 
 ### Before activating the engine (checklist)
 1. **Credentials** — none are attached yet, which is why nodes show errors. Create them in n8n with the exact names in the
-   workflow's *SETUP* note (Peak PV Supabase, OpenAI, Google Drive, Meta Token, LinkedIn Token, Telegram; Creatomate and
-   Gemini are only for video, which v1.1 keeps off), then open each red node and pick the credential.
+   workflow's *SETUP* note (Peak PV Supabase, OpenAI, Google Drive, Meta Token, LinkedIn Token, Telegram), then open each
+   red node and pick the credential. No Gemini or Creatomate credentials are needed.
 2. **Placeholders** — in *Runtime Configuration* replace `YOUR_PEAKPV_DRIVE_FOLDER_ID` and `YOUR_TELEGRAM_CHAT_ID`, and pick
-   the same Drive folder on the four *Upload … to Google Drive* nodes.
+   the same Drive folder on the *Upload Image to Google Drive* node.
 3. **Schedules** — *Audit Decisions* and *Queue Processor* (every 5 minutes) are enabled: the first moves approved audits to
    the publishing queue (the console webhook does not reach it), the second publishes posts when their scheduled time comes.
    *Plan Intake* and *Job Intake* are inherited from Madama and stay disabled.
-4. **Telegram previews** — the preview nodes are disabled while `telegram_preview_enabled` is `true`; enable them (except the
-   video one) once the Telegram credential and chat ID are set, or set the flag to `false`.
+4. **Telegram previews** — the preview nodes are disabled while `telegram_preview_enabled` is `true`; enable them once the
+   Telegram credential and chat ID are set, or set the flag to `false`.
+
+## v1.2 (Nov 2026) — OpenAI images + Arabic text, nothing else
+The engine (n8n/peakpv-marketing-engine-v1.2.json, 120 nodes) only makes **OpenAI images** and **Arabic copy**:
+- Removed: the Gemini video pipeline, the Creatomate branded-image and branded-video steps, and the video publish branches.
+- The approved OpenAI image goes straight to Drive and the queue; a new *Attach Image for Preview* node feeds the Telegram preview.
+- Copy is written from the approved facts (`service_details`) of the service chosen in the console.
 
 ## v1.1 (Nov 2026) — images + Arabic only
 Every post is one image + Arabic text (copy, CTA, hashtags and the band on the image). Video is off in the console and in the engine
