@@ -35,6 +35,10 @@ Still to fill on `brands` (row `peakpv`): `whatsapp_url`, `contact_phone`, `logo
 Create the credentials listed in the workflow's **SETUP** note (exact names), import
 `n8n/peakpv-marketing-engine-v1.0.json`, set the Drive folder, and **activate** it.
 
+## v1.1 (Nov 2026) — images + Arabic only
+Every post is one image + Arabic text (copy, CTA, hashtags and the band on the image). Video is off in the console and in the engine
+(n8n node *Force Image Only*). Services now include **EV Charging Points** and **Off-Grid Solar**. All platforms are on by default.
+
 ## Publishing
 Facebook + Instagram (Meta page token), LinkedIn (own token, company page), and the Telegram channel
 (mirrors each Facebook post). Nothing publishes until you approve it and the `publish_*` flag is true.

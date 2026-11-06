@@ -31,7 +31,8 @@ var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAl
 var CFG = {}, BRANDS = [], OPTIONS = [];
 var PLATFORMS = ['facebook','instagram','linkedin'];
 var PLATNAME = { facebook:'Facebook', instagram:'Instagram', linkedin:'LinkedIn' };
-var MEDIA = ['Text Only','Image','Short Video','Image + Short Video'];
+/* Peak PV: every post is one image + Arabic text. No video, no text-only (Nov 2026). */
+var MEDIA = ['Image'];
 
 /* ---------- rates: same figures as the Publish Ledger ---------- */
 var RATE = { textIn:2/1e6, textOut:12/1e6, imgOut:30/1e6, imgTok:6000,
@@ -254,7 +255,8 @@ function renderPlatforms(){
         return '<option>' + m + '</option>';
       }).join('') + '</select></label>';
   }).join('');
-  $$('#platGrid select').forEach(function(sel){ sel.value = 'Not used'; sel.addEventListener('change', recalc); });
+  /* All platforms on by default (Telegram mirrors Facebook); set one to Not used to skip it. */
+  $$('#platGrid select').forEach(function(sel){ sel.value = 'Image'; sel.addEventListener('change', recalc); });
 }
 function mediaByPlatform(){
   var out = {};
@@ -326,6 +328,12 @@ function isoSlot(dateStr, hour, addDays){
 function servicesFor(brandId){
   return OPTIONS.filter(function(o){ return (o.brand_id||'').toLowerCase() === brandId.toLowerCase(); });
 }
+var EV_ANGLES = [
+  'a family that just bought an electric car and charges it from a regular socket',
+  'a residential building or company parking that needs proper charging points',
+  'safe installation: the right cable, breaker and protection, through a licensed partner',
+  'charging at home or at work combined with a solar system'
+];
 var ANGLES = [
   'a high electricity bill and the free bill study on WhatsApp',
   'a concrete Jordanian home, farm, well or workshop situation and its practical value',
@@ -354,6 +362,9 @@ function buildRows(state){
         if (!pick) pick = pool[(si*plats.length + pi + bi) % pool.length];
         var service = pick.option_value;
         var company = brand.company_name || bid;
+        var isEV = /ev|charg/i.test(service);
+        var angle = isEV ? EV_ANGLES[(si*plats.length + pi) % EV_ANGLES.length]
+                         : ANGLES[(si*plats.length + pi) % ANGLES.length];
 
         rows.push({
           id: bid + '-ui-' + Date.now().toString(36) + '-' + seq + '-' + Math.random().toString(36).slice(2,7),
@@ -362,8 +373,10 @@ function buildRows(state){
           content_pillar: service,
           topic_idea: [
             'Create one ' + PLATNAME[p] + ' marketing post in simple Jordanian Arabic for ' + company + ' promoting ' + service + '.',
-            'Use a distinct angle centered on ' + ANGLES[(si*plats.length + pi) % ANGLES.length] + '.',
-            'Market the service directly and ask the reader to send the electricity bill on WhatsApp for a free study.',
+            'Use a distinct angle centered on ' + angle + '.',
+            isEV ? 'Market the EV charging service directly and ask the reader to send the car type and location on WhatsApp to arrange a technical visit.'
+                 : 'Market the service directly and ask the reader to send the electricity bill on WhatsApp for a free study.',
+            'All published text (copy, CTA, hashtags, text on the image) must be Arabic only; the only Latin text allowed is the brand name Peak PV. Image only, no video.',
             'Never target commercial shops; no prices, savings numbers, payback years or a zero-bill promise.',
             'This item must be different from other items in the same batch.',
             'Requested media package: ' + media + '.'

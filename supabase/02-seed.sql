@@ -13,3 +13,13 @@ values ('peakpv', true, 'Peak PV',
 false,false,false,false, now()::text, now()::text)
 on conflict (brand_id) do nothing;
 -- (brand_content_options and service_details rows: see the live project; exported below)
+
+-- Nov 2026 (v1.1): two more Peak PV services - EV charging points and off-grid solar.
+insert into brand_content_options (option_id,brand_id,content_type,category,option_label,option_value,active,sort_order,notes) values
+('pv-ev-points','peakpv','service','ev','EV Charging Points','EV Charging Points',true,8,'Buildings, hotels, farms, company parking'),
+('pv-offgrid','peakpv','service','solar','Off-Grid Solar','Off-Grid Solar',true,9,'No grid or weak grid')
+on conflict (option_id) do nothing;
+insert into service_details (brand_id,service_value,summary,scenarios,differentiators,keywords,avoid) values
+('peakpv','EV Charging Points','Supply and installation of EV charging points (wall chargers, single-phase or three-phase) for residential building garages, hotels, farms and company parking, with the supply cable, breaker and protection sized and checked. Can be combined with a solar system.','Residential building where residents bought electric cars and need charging in the garage; hotel or company that wants charging for guests or staff cars; farm or villa with several cars.','Site visit and load check before installation; proper cable, breaker and protection; installation through a licensed partner company.','نقاط شحن, شاحن سيارة كهربائية, شحن بالعمارة, كراج, مواقف, سيارة كهربائية','Charging-time promises, prices, brand claims, commercial shops.'),
+('peakpv','Off-Grid Solar','Fully independent solar system with lithium batteries for sites with no grid or a weak grid, sized on the real daily loads.','Farm or rest house far from the grid; well pump or poultry house with frequent outages; home that wants to run without the grid.','Load study first; battery and inverter sized for night use and cloudy days; installation through a licensed partner company.','أوف جريد, نظام مستقل, بطاريات, بدون كهربا, مزرعة','Backup-duration promises, prices, zero-bill claims.')
+on conflict do nothing;
