@@ -38,12 +38,12 @@ Create the credentials listed in the workflow's **SETUP** note (exact names), im
 ### Before activating the engine (checklist)
 1. **Credentials** — none are attached yet, which is why nodes show errors. Create them in n8n with the exact names in the
    workflow's *SETUP* note (Peak PV Supabase, OpenAI, Google Drive, Meta Token, LinkedIn Token, Telegram), then open each
-   red node and pick the credential. No Gemini or Creatomate credentials are needed.
+   red node and pick the credential. The OpenAI nodes already use *OpenAI account*. No Gemini or Creatomate credentials are needed.
 2. **Placeholders** — in *Runtime Configuration* replace `YOUR_PEAKPV_DRIVE_FOLDER_ID` and `YOUR_TELEGRAM_CHAT_ID`, and pick
    the same Drive folder on the *Upload Image to Google Drive* node.
 3. **Schedules** — *Audit Decisions* and *Queue Processor* (every 5 minutes) are enabled: the first moves approved audits to
    the publishing queue (the console webhook does not reach it), the second publishes posts when their scheduled time comes.
-   *Plan Intake* and *Job Intake* are inherited from Madama and stay disabled.
+   The Madama *Plan Intake* (weekly briefs) and *Job Intake* (job posts) branches were removed: the console does not use them.
 4. **Telegram previews** — the preview nodes are disabled while `telegram_preview_enabled` is `true`; enable them once the
    Telegram credential and chat ID are set, or set the flag to `false`.
 

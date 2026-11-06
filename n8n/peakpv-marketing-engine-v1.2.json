@@ -12,188 +12,6 @@
           ]
         }
       },
-      "id": "ffffeea6-1adb-4e1e-b4d2-8e76e08e6e53",
-      "name": "Plan Intake - Every 5 Minutes",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        176,
-        448
-      ],
-      "disabled": true
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "planner-sheet",
-              "name": "google_sheet_id",
-              "value": "not-used",
-              "type": "string"
-            },
-            {
-              "id": "planner-count",
-              "name": "posts_per_brand",
-              "value": 2,
-              "type": "number"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "86d91a7d-ac38-418f-9c03-f8624c601ff1",
-      "name": "Planner Configuration",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        400,
-        448
-      ],
-      "notes": "Edit the Google Sheet ID here once after import."
-    },
-    {
-      "parameters": {
-        "url": "https://fbkrrzlwmygzdoozrlgg.supabase.co/rest/v1/brands?select=*",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 60000
-        }
-      },
-      "id": "1107401c-e4e3-478e-9a6f-2b216fc858af",
-      "name": "Read Brands for Weekly Plan",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        624,
-        448
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000
-    },
-    {
-      "parameters": {
-        "jsCode": "const truthy = (v) => ['true','yes','1','y','active'].includes(String(v ?? '').trim().toLowerCase());\nreturn $input.all()\n  .filter(item => truthy(item.json.active))\n  .map((item, index) => ({ json: item.json, pairedItem: { item: index } }));"
-      },
-      "id": "65df5ddc-dfea-492e-a0de-8879c2d6d0e5",
-      "name": "Filter Active Brands",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        848,
-        448
-      ]
-    },
-    {
-      "parameters": {
-        "batching": {},
-        "hasOutputParser": true,
-        "messages": {
-          "messageValues": [
-            {
-              "message": "Create one item per supplied platform, not platform variants of every idea. Use a different concrete topic for each platform. Never target commercial shops. Write content_pillar and topic_idea in English. Media type is always Image."
-            }
-          ]
-        },
-        "promptType": "define",
-        "text": "=You are the senior marketing planner for Peak PV, a small Jordanian solar and EV-charger company that generates qualified leads and installs through a licensed partner.\n\nBrand:\n- Name: {{ $json.company_name }}\n- Business context: {{ $json.brand_context }}\n- Target audience: {{ $json.target_audience }}\n- Tone: {{ $json.tone_of_voice }}\n- Default CTA: {{ $json.default_cta }}\n- Primary timezone: {{ $json.timezone || 'Asia/Amman' }}\n\nPlanning time: {{ $now.toISO() }}\n\nApproved weekly brief:\n- Brief ID: {{ $json.weekly_brief_id }}\n- Week: {{ $json.week_start }} through {{ $json.week_end }}\n- Objective: {{ $json.weekly_objective }}\n- Campaign: {{ $json.weekly_campaign }}\n- Required topics: {{ $json.weekly_required_topics }}\n- Excluded topics: {{ $json.weekly_excluded_topics }}\n- Platforms: {{ $json.weekly_platforms }}\n- Special offer: {{ $json.weekly_special_offer }}\n- Image direction: {{ $json.weekly_image_style }}\n- Extra instructions: {{ $json.weekly_extra_instructions }}\n- Required posting schedule: {{ $json.weekly_posting_schedule }}\n\nCreate exactly the smaller of posts_count or the number of unique platforms listed in the approved brief, with no more than one content item per platform. Never create several variants of the same idea.\n\nInstruction precedence:\n1. Required topics, excluded topics, campaign, objective, and extra instructions in the approved brief are authoritative.\n2. Preserve the requested intent exactly.\n3. Use the brand context only to support the requested direction; do not replace it with a default topic.\n\nRandom topic mode:\n- When extra_instructions contains RANDOM TOPIC MODE, required_topics is a candidate pool. Select distinct primary topics from that pool only, using the Brief ID as a variation seed. Do not repeat a service inside one plan and do not introduce services outside the pool.\n\nPeak PV services (use these exact names in content_pillar):\n- Free Bill Study: the customer sends a photo of the electricity bill on WhatsApp and gets a free system study.\n- Home Solar: on-grid rooftop system for homes, net-value billing.\n- Hybrid Solar with Batteries: power at night and during outages.\n- Off-Grid Solar: fully independent solar system with batteries where there is no grid or the grid is weak.\n- Farm & Well Solar: poultry/livestock farms, greenhouses, wells and irrigation pumps.\n- Small Industry Solar: workshops, bakeries, small factories on the small-industrial tariff.\n- Hotel Solar: hotels and serviced apartments.\n- Home EV Charger: supply and installation of a home charger for electric cars (wallbox in the villa or apartment garage).\n- EV Charging Points: installing EV charging points for residential buildings, farms, hotels and company parking lots.\n- Social Occasion: greetings only (Ramadan, Eid, Independence Day, New Year...).\n- Recruitment: only when real job details are supplied.\n\nDefault mix when the brief is broad:\n- Peak PV markets TWO things only: EV charging point installation and solar energy systems. When the plan has two or more posts, include at least one EV charging post (Home EV Charger or EV Charging Points) and at least one solar post.\n- At least half of the posts drive a WhatsApp call to action through a concrete service (bill photo for solar, car type and location for EV charging).\n- Prefer customers who benefit most: homes NOT on the subsidized tariff or using more than 600 kWh a month, families with an electric car, residential buildings, farms, wells, small industry, hotels.\n- NEVER target commercial shops, stores, supermarkets, restaurants, offices or malls. They are excluded from net-value billing in Jordan and are not Peak PV customers.\n\nPlanning rules:\n- Follow the approved posting days/times exactly. If posting_schedule contains ISO 8601 datetimes, copy them into scheduled_at. Local wording is converted with the brand timezone (Asia/Amman, +03:00) keeping the requested clock time.\n- INSTANT MODE: start immediately, create exactly posts_count items (max one per platform), copy the supplied schedule; unscheduled drafts leave scheduled_at empty.\n- Without a schedule, distribute posts across the week at good Jordanian times (around 13:00 or 20:30 local).\n- Set target_platform to facebook, instagram, or linkedin, only from the supplied platforms, each at most once. When no platforms are supplied, plan for all three (facebook, instagram, linkedin); Telegram mirrors the Facebook item automatically.\n- Make every topic_idea concrete: one real Jordanian customer situation (for example a home paying a high summer bill, a poultry farm running fans all day, a well pump in Mafraq, a family that just bought an electric car, a residential building whose residents need charging points in the garage), the exact Peak PV service, the buyer, the practical value, and one precise visible image action.\n- Do not repeat the same hook, benefit list, or sentence structure across the plan.\n- Platform fit: Facebook = approachable, direct WhatsApp lead request; Instagram = visual and short; LinkedIn = business value for farms, small industry, hotels, residential buildings and companies installing EV charging points.\n- Write content_pillar and topic_idea in English (they drive image generation); every published text will be Arabic only.\n- media_type is ALWAYS \"Image\". Peak PV does not produce video: never plan Short Video or Image + Short Video, whatever the brief says.\n- Do not invent prices, exact savings, payback years, offers, customer names, certifications, guarantees, completed projects or results. Peak PV itself is not the licensed installer; installation is \"through a licensed partner company\".\n- Return only the structured plan requested by the output parser.\n"
-      },
-      "id": "b19ea662-799c-49ee-8c7b-76b47196ad5f",
-      "name": "Generate Weekly Content Plan",
-      "type": "@n8n/n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1.7,
-      "position": [
-        1968,
-        336
-      ]
-    },
-    {
-      "parameters": {
-        "schemaType": "manual",
-        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"posts\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"campaign\": {\n            \"type\": \"string\"\n          },\n          \"content_pillar\": {\n            \"type\": \"string\"\n          },\n          \"topic_idea\": {\n            \"type\": \"string\"\n          },\n          \"scheduled_at\": {\n            \"type\": \"string\"\n          },\n          \"media_type\": {\n            \"type\": \"string\"\n          },\n          \"video_style\": {\n            \"type\": \"string\"\n          },\n          \"video_duration_seconds\": {\n            \"type\": \"integer\"\n          },\n          \"video_aspect_ratio\": {\n            \"type\": \"string\"\n          },\n          \"target_platform\": {\n            \"type\": \"string\",\n            \"enum\": [\n              \"facebook\",\n              \"instagram\",\n              \"linkedin\"\n            ]\n          }\n        },\n        \"required\": [\n          \"campaign\",\n          \"content_pillar\",\n          \"topic_idea\",\n          \"scheduled_at\",\n          \"media_type\",\n          \"video_style\",\n          \"video_duration_seconds\",\n          \"video_aspect_ratio\",\n          \"target_platform\"\n        ],\n        \"additionalProperties\": false\n      }\n    }\n  },\n  \"required\": [\n    \"posts\"\n  ],\n  \"additionalProperties\": false\n}"
-      },
-      "id": "a7ecb54f-d4c7-42e0-ba13-c8e7e94a739d",
-      "name": "Weekly Plan Structured Parser",
-      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
-      "typeVersion": 1.3,
-      "position": [
-        2096,
-        576
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const results = $input.all();\nconst brands = $('Attach Approved Weekly Briefs').all();\nconst out = [];\nconst now = new Date().toISOString();\nconst clean = value => String(value ?? '').trim();\n// Peak PV: images + Arabic text only. Video production is switched off.\nconst normalizeMedia = value => 'Image';\nconst normalizePlatform = value => {\n  const key = clean(value).toLowerCase();\n  if (key.includes('facebook')) return 'facebook';\n  if (key.includes('instagram')) return 'instagram';\n  if (key.includes('linkedin')) return 'linkedin';\n  return '';\n};\nconst parsePlatforms = value => {\n  const found = clean(value).split(/[;,\\n]+/).map(normalizePlatform).filter(Boolean);\n  return [...new Set(found)];\n};\n\nfor (let i = 0; i < results.length; i++) {\n  const brand = brands[i]?.json || {};\n  const raw = results[i].json.output ?? results[i].json;\n  const plan = typeof raw === 'string' ? JSON.parse(raw) : raw;\n  const suppliedPlatforms = parsePlatforms(brand.weekly_platforms);\n  const allowedPlatforms = suppliedPlatforms.length ? suppliedPlatforms : ['facebook', 'instagram', 'linkedin'];\n  const plannedPosts = Array.isArray(plan.posts) ? plan.posts : [];\n  const requestedCount = Math.max(1, Math.min(Number(brand.weekly_posts_count || 1), allowedPlatforms.length));\n  const posts = plannedPosts.slice(0, requestedCount);\n  const usedPlatforms = new Set();\n\n  posts.forEach((post, index) => {\n    let targetPlatform = normalizePlatform(post.target_platform);\n    if (!allowedPlatforms.includes(targetPlatform) || usedPlatforms.has(targetPlatform)) {\n      targetPlatform = allowedPlatforms.find(platform => !usedPlatforms.has(platform)) || '';\n    }\n    if (!targetPlatform) return;\n    usedPlatforms.add(targetPlatform);\n\n    const id = [brand.brand_id || 'brand', now.slice(0,10), Date.now(), index + 1, Math.random().toString(36).slice(2,7)].join('-');\n    const media = normalizeMedia(post.media_type || brand.weekly_media_type);\n    const needsImage = media.includes('Image');\n    const needsVideo = media.includes('Video');\n    out.push({ json: {\n      id, brand_id: brand.brand_id, campaign: post.campaign || brand.weekly_campaign || '',\n      target_platform: targetPlatform,\n      content_pillar: post.content_pillar, topic_idea: post.topic_idea,\n      target_audience: brand.target_audience || '', tone_of_voice: brand.tone_of_voice || '',\n      scheduled_at: post.scheduled_at, status: 'Needs Draft',\n      generated_linkedin: '', generated_facebook: '', generated_instagram: '', image_url: '', image_brief: '', link_url: '',\n      image_status: needsImage ? 'Pending' : 'Not Requested', image_file_id: '', image_attempts: 0,\n      media_type: media, video_brief: '', video_script: '',\n      video_status: needsVideo ? 'Pending' : 'Not Requested', video_url: '', video_file_id: '', video_attempts: 0,\n      video_provider: '', video_style: clean(post.video_style || brand.weekly_video_style),\n      video_duration_seconds: Math.max(3, Math.min(10, Number(post.video_duration_seconds || brand.weekly_video_duration_seconds || 8))),\n      audit_id: '', audit_status: 'Not Submitted', audit_submitted_at: '', audit_version: 1,\n      video_aspect_ratio: clean(post.video_aspect_ratio || brand.weekly_video_aspect_ratio) || '9:16',\n      publish_facebook: brand.publish_facebook, publish_instagram: brand.publish_instagram, publish_linkedin: brand.publish_linkedin,\n      facebook_status: 'Pending', facebook_post_id: '', facebook_attempts: 0,\n      instagram_status: 'Pending', instagram_post_id: '', instagram_attempts: 0,\n      linkedin_status: 'Pending', linkedin_post_id: '', linkedin_attempts: 0,\n      last_error: '', next_retry_at: '', approved_by: '', approved_at: '', published_at: '', updated_at: now\n    } });\n  });\n}\nreturn out;"
-      },
-      "id": "28ec6d2e-2b32-414c-affc-595c52aadf04",
-      "name": "Create Queue Rows from Weekly Plan",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2384,
-        448
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://fbkrrzlwmygzdoozrlgg.supabase.co/rest/v1/content_queue",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {
-          "timeout": 60000
-        }
-      },
-      "id": "40f14e10-4b98-430a-8604-8ae6f4835df1",
-      "name": "Append Planned Posts to Queue",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2672,
-        448
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000
-    },
-    {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "minutes",
-              "minutesInterval": 1
-            }
-          ]
-        }
-      },
       "id": "16bc581d-b3c8-4d62-9746-4f9feca3fb7f",
       "name": "Queue Processor - Every 5 Minutes",
       "type": "n8n-nodes-base.scheduleTrigger",
@@ -201,8 +19,7 @@
       "position": [
         176,
         3120
-      ],
-      "disabled": false
+      ]
     },
     {
       "parameters": {
@@ -580,7 +397,8 @@
     },
     {
       "parameters": {
-        "batching": {},
+        "promptType": "define",
+        "text": "=You are the social media specialist for \"{{ $json.company_name }}\" (Peak PV), a Jordanian solar and EV-charger company.\n\nBrand context:\n{{ $json.brand_context }}\n\nTarget audience: {{ $json.target_audience || $json.brand_target_audience }}\nTone of voice: {{ $json.tone_of_voice || $json.brand_tone_of_voice }}\nCampaign: {{ $json.campaign }}\nTarget platform: {{ $json.target_platform }}\nContent category / primary subject: {{ $json.content_pillar }}\nTopic / source details: {{ $json.topic_idea }}\nApproved service facts (AUTHORITATIVE — use ONLY these concrete facts; do not invent services, coverage, numbers, or claims not listed here; strictly obey the Must avoid line):\n{{ $json.service_facts || 'None provided. Rely on brand context and the topic only. Do not invent specific service details, coverage areas, statistics, or claims.' }}\nDefault CTA: {{ $json.default_cta }}\nOptional destination link: {{ $json.link_url }}\nRequired output language: {{ $json.content_language || 'Arabic (simple Jordanian dialect)' }}\n\nLanguage rules:\n- Write all customer-facing copy, CTA and hashtags in the required output language. For Peak PV this is Arabic in a simple, warm Jordanian/Levantine dialect (لهجة أردنية بسيطة), easy for a farmer or a homeowner, not heavy formal Arabic and not Egyptian or Gulf dialect.\n- ALL customer-facing text is Arabic ONLY on every platform (Facebook, Instagram, LinkedIn, Telegram): no English sentences, no English hashtags, no English CTA. The only Latin text allowed is the brand name \"Peak PV\".\n- Write image_brief in English (internal instruction for the image model, never published). Return video_brief and video_script as empty strings: Peak PV publishes images only, never video.\n- Keep technical words people use in Jordan: طاقة شمسية، ألواح، إنفيرتر، بطاريات، فاتورة، كيلو، شاحن سيارة، نقطة شحن.\n- Preserve company names, URLs, email addresses, and phone numbers exactly as supplied. Write \"Peak PV\" in Latin letters.\n\nIntent control rules:\n- The supplied content_pillar and topic_idea are authoritative. Follow their service and marketing intent exactly.\n- Rows created by the console are authoritative commands. Do not merge them, change their platform, replace their topic, or reuse another row's creative direction.\n- Never address or target commercial shops, stores, supermarkets, restaurants, offices or malls.\n\nSingle-platform output rules:\n- This content item belongs only to target_platform. Write copy only for it and return an empty string for the other two platform fields.\n- Use the concrete customer situation in topic_idea; do not replace it with a generic company description.\n\nWrite the target-platform copy:\n- Facebook: short hook about the bill or the situation, 2-4 short lines of value, then a clear WhatsApp CTA (\"ابعتلنا صورة فاتورتك على واتساب والدراسة مجانية\"). For EV charger / EV charging point posts the CTA is \"ابعتلنا نوع سيارتك وموقعك على واتساب ومنرتبلك زيارة فنية\". Around 50-110 words.\n- Instagram: visual, short lines, around 40-90 words, up to 8 hashtags in Arabic only (for example #طاقة_شمسية #الأردن #فاتورة_الكهرباء #شاحن_سيارة_كهربائية #نقاط_شحن).\n- LinkedIn: Arabic, business value for farms, small industry, hotels, residential buildings and companies (solar systems or EV charging points); 80-180 words.\n- image_brief: when Media type includes Image, one detailed photorealistic scene in Jordan matching the exact topic; when Media type is Text Only, return an empty string.\n- cta: one short recommended action in Arabic (the bill on WhatsApp for solar, car type and location on WhatsApp for EV charging).\n\nSolar and EV image rules (for image_brief):\n- One coherent scene in an authentic Jordanian setting: flat concrete rooftop with water tanks and stone buildings, a farm in Mafraq or the Jordan Valley, a poultry house, a well pump, a small workshop, a hotel roof, a villa with a home EV charger, or EV charging points in a residential building garage, hotel or company parking lot with an electric car plugged in.\n- When installers appear: helmets, harnesses and gloves, mounting panels on a galvanized steel frame, connecting an inverter safely or mounting a wall charger with neat conduit.\n- Never imply that the pictured scene is a real completed Peak PV project.\n\nSocial occasion rules:\n- For Social Occasion, Ramadan, Eid, Independence Day, New Year or another named occasion, write a short respectful greeting from Peak PV for that exact occasion, with no sales pitch, no CTA and no contact details.\n- Do not invent religious quotations, historical facts or political statements.\n- image_brief: an elegant, respectful occasion scene as celebrated in Jordan, without logos or readable text.\n\nRecruitment rules:\n- Only when real job details are supplied. Use only the supplied title, location, duties, requirements, compensation and application details. No vacancy text inside the image.\n\nMarketing objective rules:\n- Default to qualified lead generation: the reader should contact Peak PV on WhatsApp.\n- A problem (high bill, outages, fuel cost for a pump, charging an EV at home or at a building) is a short hook; the body markets the exact Peak PV service.\n- Do not write long technical lessons. If net-value billing is mentioned, explain it in one simple sentence: the energy the system produces is credited on the same electricity bill.\n\nVerified contact handling:\n- Service marketing: do not place phone numbers, URLs or social links inside the copy. The workflow appends the verified contact block automatically. End with a short CTA without contact details.\n- Social Occasion: no CTA and no contact details.\n- Recruitment: only application details supplied in topic_idea.\n\nGlobal safety rules:\n- Never invent prices, exact savings, payback years, percentages, statistics, guarantees, certifications, completed projects, customer names, reviews, phone numbers, URLs or locations.\n- Do not say Peak PV is licensed by the Energy and Minerals Regulatory Commission; say installation is done through a licensed partner company only if that fact is supplied.\n- Do not promise that the bill becomes zero. Say the system reduces the bill and the study shows the expected saving.\n- No logos, readable text in images, watermarks, unsafe roof work, sparks, flames, fake claims, maps or unrelated collages.\n- Return only the structured output required by the parser, with no markdown or explanations.\n\nRequested media:\n- Media type: {{ $json.media_type || 'Image' }}\n- If Media type is Text Only, return an empty image_brief, video_brief and video_script.\n- If Media type includes Image, return one detailed image_brief matched to this row's platform, topic and intent.\n- video_brief and video_script: always empty strings (Peak PV publishes images only).\n\nFINAL CREATIVE QUALITY REQUIREMENTS:\n- One focused post around one concrete Jordanian customer need and one clear value.\n- Open with a specific natural hook; remove filler, hype and clichés; short lines; a few relevant emojis at most.\n- image_brief must specify: subject, action, equipment, PPE, Jordanian setting, camera framing, lighting, composition and forbidden elements, as one coherent frame.\n",
         "hasOutputParser": true,
         "messages": {
           "messageValues": [
@@ -589,8 +407,7 @@
             }
           ]
         },
-        "promptType": "define",
-        "text": "=You are the social media specialist for \"{{ $json.company_name }}\" (Peak PV), a Jordanian solar and EV-charger company.\n\nBrand context:\n{{ $json.brand_context }}\n\nTarget audience: {{ $json.target_audience || $json.brand_target_audience }}\nTone of voice: {{ $json.tone_of_voice || $json.brand_tone_of_voice }}\nCampaign: {{ $json.campaign }}\nTarget platform: {{ $json.target_platform }}\nContent category / primary subject: {{ $json.content_pillar }}\nTopic / source details: {{ $json.topic_idea }}\nApproved service facts (AUTHORITATIVE — use ONLY these concrete facts; do not invent services, coverage, numbers, or claims not listed here; strictly obey the Must avoid line):\n{{ $json.service_facts || 'None provided. Rely on brand context and the topic only. Do not invent specific service details, coverage areas, statistics, or claims.' }}\nDefault CTA: {{ $json.default_cta }}\nOptional destination link: {{ $json.link_url }}\nRequired output language: {{ $json.content_language || 'Arabic (simple Jordanian dialect)' }}\n\nLanguage rules:\n- Write all customer-facing copy, CTA and hashtags in the required output language. For Peak PV this is Arabic in a simple, warm Jordanian/Levantine dialect (لهجة أردنية بسيطة), easy for a farmer or a homeowner, not heavy formal Arabic and not Egyptian or Gulf dialect.\n- ALL customer-facing text is Arabic ONLY on every platform (Facebook, Instagram, LinkedIn, Telegram): no English sentences, no English hashtags, no English CTA. The only Latin text allowed is the brand name \"Peak PV\".\n- Write image_brief in English (internal instruction for the image model, never published). Return video_brief and video_script as empty strings: Peak PV publishes images only, never video.\n- Keep technical words people use in Jordan: طاقة شمسية، ألواح، إنفيرتر، بطاريات، فاتورة، كيلو، شاحن سيارة، نقطة شحن.\n- Preserve company names, URLs, email addresses, and phone numbers exactly as supplied. Write \"Peak PV\" in Latin letters.\n\nIntent control rules:\n- The supplied content_pillar and topic_idea are authoritative. Follow their service and marketing intent exactly.\n- Rows created by the console are authoritative commands. Do not merge them, change their platform, replace their topic, or reuse another row's creative direction.\n- Never address or target commercial shops, stores, supermarkets, restaurants, offices or malls.\n\nSingle-platform output rules:\n- This content item belongs only to target_platform. Write copy only for it and return an empty string for the other two platform fields.\n- Use the concrete customer situation in topic_idea; do not replace it with a generic company description.\n\nWrite the target-platform copy:\n- Facebook: short hook about the bill or the situation, 2-4 short lines of value, then a clear WhatsApp CTA (\"ابعتلنا صورة فاتورتك على واتساب والدراسة مجانية\"). For EV charger / EV charging point posts the CTA is \"ابعتلنا نوع سيارتك وموقعك على واتساب ومنرتبلك زيارة فنية\". Around 50-110 words.\n- Instagram: visual, short lines, around 40-90 words, up to 8 hashtags in Arabic only (for example #طاقة_شمسية #الأردن #فاتورة_الكهرباء #شاحن_سيارة_كهربائية #نقاط_شحن).\n- LinkedIn: Arabic, business value for farms, small industry, hotels, residential buildings and companies (solar systems or EV charging points); 80-180 words.\n- image_brief: when Media type includes Image, one detailed photorealistic scene in Jordan matching the exact topic; when Media type is Text Only, return an empty string.\n- cta: one short recommended action in Arabic (the bill on WhatsApp for solar, car type and location on WhatsApp for EV charging).\n\nSolar and EV image rules (for image_brief):\n- One coherent scene in an authentic Jordanian setting: flat concrete rooftop with water tanks and stone buildings, a farm in Mafraq or the Jordan Valley, a poultry house, a well pump, a small workshop, a hotel roof, a villa with a home EV charger, or EV charging points in a residential building garage, hotel or company parking lot with an electric car plugged in.\n- When installers appear: helmets, harnesses and gloves, mounting panels on a galvanized steel frame, connecting an inverter safely or mounting a wall charger with neat conduit.\n- Never imply that the pictured scene is a real completed Peak PV project.\n\nSocial occasion rules:\n- For Social Occasion, Ramadan, Eid, Independence Day, New Year or another named occasion, write a short respectful greeting from Peak PV for that exact occasion, with no sales pitch, no CTA and no contact details.\n- Do not invent religious quotations, historical facts or political statements.\n- image_brief: an elegant, respectful occasion scene as celebrated in Jordan, without logos or readable text.\n\nRecruitment rules:\n- Only when real job details are supplied. Use only the supplied title, location, duties, requirements, compensation and application details. No vacancy text inside the image.\n\nMarketing objective rules:\n- Default to qualified lead generation: the reader should contact Peak PV on WhatsApp.\n- A problem (high bill, outages, fuel cost for a pump, charging an EV at home or at a building) is a short hook; the body markets the exact Peak PV service.\n- Do not write long technical lessons. If net-value billing is mentioned, explain it in one simple sentence: the energy the system produces is credited on the same electricity bill.\n\nVerified contact handling:\n- Service marketing: do not place phone numbers, URLs or social links inside the copy. The workflow appends the verified contact block automatically. End with a short CTA without contact details.\n- Social Occasion: no CTA and no contact details.\n- Recruitment: only application details supplied in topic_idea.\n\nGlobal safety rules:\n- Never invent prices, exact savings, payback years, percentages, statistics, guarantees, certifications, completed projects, customer names, reviews, phone numbers, URLs or locations.\n- Do not say Peak PV is licensed by the Energy and Minerals Regulatory Commission; say installation is done through a licensed partner company only if that fact is supplied.\n- Do not promise that the bill becomes zero. Say the system reduces the bill and the study shows the expected saving.\n- No logos, readable text in images, watermarks, unsafe roof work, sparks, flames, fake claims, maps or unrelated collages.\n- Return only the structured output required by the parser, with no markdown or explanations.\n\nRequested media:\n- Media type: {{ $json.media_type || 'Image' }}\n- If Media type is Text Only, return an empty image_brief, video_brief and video_script.\n- If Media type includes Image, return one detailed image_brief matched to this row's platform, topic and intent.\n- video_brief and video_script: always empty strings (Peak PV publishes images only).\n\nFINAL CREATIVE QUALITY REQUIREMENTS:\n- One focused post around one concrete Jordanian customer need and one clear value.\n- Open with a specific natural hook; remove filler, hype and clichés; short lines; a few relevant emojis at most.\n- image_brief must specify: subject, action, equipment, PPE, Jordanian setting, camera framing, lighting, composition and forbidden elements, as one coherent frame.\n"
+        "batching": {}
       },
       "id": "451b7cbb-05f5-4b0b-a1e8-18d639db42f9",
       "name": "Generate Platform Drafts",
@@ -631,8 +448,8 @@
     },
     {
       "parameters": {
-        "jsCode": "const draft = $json;\nconst queueRow = $('Validate and Classify Queue Rows').item.json;\nconst clean = value => String(value ?? '').trim();\nconst key = value => clean(value).toLowerCase();\n\nconst brands = $('Read Brand Configuration').all().map(item => item.json);\nconst brand = brands.find(item => clean(item.brand_id) === clean(queueRow.brand_id)) || {};\nconst source = { ...brand, ...queueRow, ...draft };\nconst intent = [source.campaign, source.content_pillar, source.topic_idea].map(key).join(' ');\nconst isOccasion = /social occasion|holiday|eid|ramadan|christmas|easter|new year|thanksgiving|labor day|independence day|good friday|palm sunday|mawlid|women.?s day|mother.?s day|army day|teacher.?s day|مناسبة|عيد|رمضان|الاستقلال|المولد|رأس السنة|الإسراء|يوم الجيش|يوم العمال|تهنئة|جمعة مباركة/.test(intent);\nconst isRecruitment = /recruitment|hiring|career|job vacancy|job posting|توظيف|وظيفة|شاغر/.test(intent);\nconst shouldAppendServiceContacts = !isOccasion && !isRecruitment;\n\nconst contacts = [\n  ['🟢 واتساب', clean(source.whatsapp_url)],\n  ['📞 هاتف', clean(source.contact_phone)],\n  ['🌐 الموقع', clean(source.website_url)],\n  ['📘 فيسبوك', clean(source.facebook_url)],\n  ['📸 إنستغرام', clean(source.instagram_url)],\n  ['✈️ تلغرام', clean(source.telegram_url)],\n  ['💬 ماسنجر', clean(source.messenger_url)],\n  ['✉️ إيميل', clean(source.contact_email)],\n].filter(([, value]) => value);\n\nconst verifiedValues = contacts.map(([, value]) => value);\nconst fallback = shouldAppendServiceContacts ? clean(source.default_cta) : '';\nconst contactBlock = shouldAppendServiceContacts\n  ? (contacts.length\n      ? [\n          '📲 للتواصل وطلب دراسة مجانية لفاتورتك',\n          ...contacts.map(([label, value]) => label + ': ' + value),\n        ].join('\\n')\n      : fallback)\n  : '';\n\nfunction removeOldContactDetails(value) {\n  const body = clean(value);\n  if (!body) return '';\n  return body\n    .split(/\\r?\\n/)\n    .filter(line => {\n      const currentLine = clean(line);\n      if (!currentLine) return true;\n      if (verifiedValues.some(value => value && currentLine.includes(value))) return false;\n      if (/^(?:📞|📲)?\\s*(?:REQUEST SERVICE|CONTACT|CONTACT US|CONTACT & REQUEST SERVICE|للتواصل.*|تواصل معنا)\\s*:?\\s*$/i.test(currentLine)) return false;\n      return true;\n    })\n    .join('\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nfunction finalizeCopy(value) {\n  const body = removeOldContactDetails(value);\n  if (!contactBlock) return body;\n  if (!body) return contactBlock;\n  return body + '\\n\\n' + contactBlock;\n}\n\nreturn {\n  json: {\n    ...draft,\n    generated_facebook: finalizeCopy(draft.generated_facebook),\n    generated_instagram: finalizeCopy(draft.generated_instagram),\n    generated_linkedin: finalizeCopy(draft.generated_linkedin),\n    contact_block: contactBlock,\n    contacts_verified: contacts.length > 0,\n    contact_block_applied: Boolean(contactBlock),\n    content_intent: isOccasion ? 'occasion' : isRecruitment ? 'recruitment' : 'service',\n  },\n};",
-        "mode": "runOnceForEachItem"
+        "mode": "runOnceForEachItem",
+        "jsCode": "const draft = $json;\nconst queueRow = $('Validate and Classify Queue Rows').item.json;\nconst clean = value => String(value ?? '').trim();\nconst key = value => clean(value).toLowerCase();\n\nconst brands = $('Read Brand Configuration').all().map(item => item.json);\nconst brand = brands.find(item => clean(item.brand_id) === clean(queueRow.brand_id)) || {};\nconst source = { ...brand, ...queueRow, ...draft };\nconst intent = [source.campaign, source.content_pillar, source.topic_idea].map(key).join(' ');\nconst isOccasion = /social occasion|holiday|eid|ramadan|christmas|easter|new year|thanksgiving|labor day|independence day|good friday|palm sunday|mawlid|women.?s day|mother.?s day|army day|teacher.?s day|مناسبة|عيد|رمضان|الاستقلال|المولد|رأس السنة|الإسراء|يوم الجيش|يوم العمال|تهنئة|جمعة مباركة/.test(intent);\nconst isRecruitment = /recruitment|hiring|career|job vacancy|job posting|توظيف|وظيفة|شاغر/.test(intent);\nconst shouldAppendServiceContacts = !isOccasion && !isRecruitment;\n\nconst contacts = [\n  ['🟢 واتساب', clean(source.whatsapp_url)],\n  ['📞 هاتف', clean(source.contact_phone)],\n  ['🌐 الموقع', clean(source.website_url)],\n  ['📘 فيسبوك', clean(source.facebook_url)],\n  ['📸 إنستغرام', clean(source.instagram_url)],\n  ['✈️ تلغرام', clean(source.telegram_url)],\n  ['💬 ماسنجر', clean(source.messenger_url)],\n  ['✉️ إيميل', clean(source.contact_email)],\n].filter(([, value]) => value);\n\nconst verifiedValues = contacts.map(([, value]) => value);\nconst fallback = shouldAppendServiceContacts ? clean(source.default_cta) : '';\nconst contactBlock = shouldAppendServiceContacts\n  ? (contacts.length\n      ? [\n          '📲 للتواصل وطلب دراسة مجانية لفاتورتك',\n          ...contacts.map(([label, value]) => label + ': ' + value),\n        ].join('\\n')\n      : fallback)\n  : '';\n\nfunction removeOldContactDetails(value) {\n  const body = clean(value);\n  if (!body) return '';\n  return body\n    .split(/\\r?\\n/)\n    .filter(line => {\n      const currentLine = clean(line);\n      if (!currentLine) return true;\n      if (verifiedValues.some(value => value && currentLine.includes(value))) return false;\n      if (/^(?:📞|📲)?\\s*(?:REQUEST SERVICE|CONTACT|CONTACT US|CONTACT & REQUEST SERVICE|للتواصل.*|تواصل معنا)\\s*:?\\s*$/i.test(currentLine)) return false;\n      return true;\n    })\n    .join('\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nfunction finalizeCopy(value) {\n  const body = removeOldContactDetails(value);\n  if (!contactBlock) return body;\n  if (!body) return contactBlock;\n  return body + '\\n\\n' + contactBlock;\n}\n\nreturn {\n  json: {\n    ...draft,\n    generated_facebook: finalizeCopy(draft.generated_facebook),\n    generated_instagram: finalizeCopy(draft.generated_instagram),\n    generated_linkedin: finalizeCopy(draft.generated_linkedin),\n    contact_block: contactBlock,\n    contacts_verified: contacts.length > 0,\n    contact_block_applied: Boolean(contactBlock),\n    content_intent: isOccasion ? 'occasion' : isRecruitment ? 'recruitment' : 'service',\n  },\n};"
       },
       "id": "a8719d2e-3480-48dc-858e-5c0808bad283",
       "name": "Append Verified Contact Block",
@@ -748,7 +565,6 @@
     },
     {
       "parameters": {
-        "options": {},
         "rules": {
           "values": [
             {
@@ -772,8 +588,8 @@
                   "version": 3
                 }
               },
-              "outputKey": "facebook",
-              "renameOutput": true
+              "renameOutput": true,
+              "outputKey": "facebook"
             },
             {
               "conditions": {
@@ -796,8 +612,8 @@
                   "version": 3
                 }
               },
-              "outputKey": "linkedin",
-              "renameOutput": true
+              "renameOutput": true,
+              "outputKey": "linkedin"
             },
             {
               "conditions": {
@@ -820,8 +636,8 @@
                   "version": 3
                 }
               },
-              "outputKey": "instagram",
-              "renameOutput": true
+              "renameOutput": true,
+              "outputKey": "instagram"
             },
             {
               "conditions": {
@@ -844,11 +660,12 @@
                   "version": 3
                 }
               },
-              "outputKey": "telegram",
-              "renameOutput": true
+              "renameOutput": true,
+              "outputKey": "telegram"
             }
           ]
-        }
+        },
+        "options": {}
       },
       "id": "27b6ebc4-8176-4aa1-a324-3f6bfaf6f8d0",
       "name": "Route Platform",
@@ -949,8 +766,11 @@
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/rest/posts",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
@@ -967,8 +787,9 @@
             }
           ]
         },
+        "sendBody": true,
+        "specifyBody": "json",
         "jsonBody": "={{ (() => {\n  const src = $('Build Platform Jobs').item.json;\n  let imageUrn = '';\n  try { if ($('LinkedIn - Upload Image').isExecuted) imageUrn = String($('LinkedIn - Init Image Upload').item.json.body.value.image || ''); } catch (e) { imageUrn = ''; }\n  const post = {\n    author: src.linkedin_author,\n    commentary: src.copy,\n    visibility: 'PUBLIC',\n    distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] },\n    lifecycleState: 'PUBLISHED',\n    isReshareDisabledByAuthor: false\n  };\n  if (imageUrn) post.content = { media: { id: imageUrn, altText: String(src.content_pillar || 'Peak PV').slice(0, 120) } };\n  return JSON.stringify(post);\n})() }}",
-        "method": "POST",
         "options": {
           "response": {
             "response": {
@@ -977,18 +798,14 @@
               "responseFormat": "json"
             }
           }
-        },
-        "sendBody": true,
-        "sendHeaders": true,
-        "specifyBody": "json",
-        "url": "https://api.linkedin.com/rest/posts"
+        }
       },
       "id": "427e4897-be40-41a9-8662-d29fa811758c",
       "name": "LinkedIn - Publish",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2932,
+        2944,
         3520
       ],
       "notes": "Select a LinkedIn Header Auth credential: Authorization = Bearer ACCESS_TOKEN."
@@ -1423,9 +1240,9 @@
       "parameters": {
         "model": {
           "__rl": true,
-          "cachedResultName": "GPT-5.6",
+          "value": "gpt-5.6-sol",
           "mode": "list",
-          "value": "gpt-5.6"
+          "cachedResultName": "gpt-5.6-sol"
         },
         "options": {}
       },
@@ -1441,10 +1258,10 @@
     },
     {
       "parameters": {
-        "color": 5,
         "content": "## Peak PV Marketing Engine v1.2 — setup\nBased on Madama Marketing Engine v10.7. Data lives in the **Peak PV** Supabase project (`fbkrrzlwmygzdoozrlgg`).\n\n### 1. Credentials (exact names)\n- **Peak PV Supabase** — HTTP Header Auth: name `apikey`, value = Supabase *secret* key.\n- **Peak PV OpenAI** — OpenAI API key (copy, images, image QA).\n- **Peak PV Google Drive** — Google Drive OAuth2.\n- **Peak PV Meta Token** — HTTP Header Auth: `Authorization` = `Bearer <page token>` (Facebook + Instagram).\n- **Peak PV LinkedIn Token** — HTTP Header Auth: `Authorization` = `Bearer <LinkedIn token>`.\n- **Peak PV Telegram** — bot token; the bot must be an admin of the Peak PV channel.\n\n### 2. After import\n1. In **Runtime Configuration** set `google_drive_folder_id` and `telegram_chat_id`.\n2. Pick the Drive folder on the **Upload Image to Google Drive** node.\n3. Webhook: `peakpv-engine-run`.\n4. In **brands** fill the page IDs and telegram_channel_id, then set the publish_* flags to true.\n5. The Telegram channel mirrors each Facebook item.\n\n### Rules built into the prompts (v1.2)\n- Images + Arabic text only on all platforms (Facebook, Instagram, LinkedIn, Telegram). Images come straight from OpenAI; there is no video pipeline (Gemini) and no Creatomate branding step. **Force Image Only** turns any leftover video row into an image row.\n- Copy is written from the approved facts of the service selected in the console (`service_details`).\n- Topics: EV charging point installation + solar systems (incl. off-grid).\n- Arabic only in copy, CTA and hashtags. Image briefs stay in English internally.\n- Never target commercial shops. No prices, savings numbers, payback years or a zero-bill promise.\n- CTA: solar = send the bill on WhatsApp for a free study; EV = send car type + location on WhatsApp.\n",
         "height": 300,
-        "width": 520
+        "width": 520,
+        "color": 5
       },
       "id": "fbb11232-e5a3-46d5-8ce6-c15a5767ea06",
       "name": "SETUP - Read Me",
@@ -1557,16 +1374,16 @@
     },
     {
       "parameters": {
-        "authentication": "predefinedCredentialType",
-        "jsonBody": "={{ (() => {\n  const row = $('Validate and Classify Queue Rows').item.json;\n  const lock = $('Prepare Image Lock').item.json;\n  const intentText = [row.campaign, row.content_pillar, row.topic_idea].map(v => String(v || '')).join(' ').toLowerCase();\n  const isOccasion = /social occasion|holiday|eid|ramadan|christmas|easter|new year|thanksgiving|labor day|independence day|good friday|palm sunday|mawlid|women.?s day|mother.?s day|army day|teacher.?s day|مناسبة|عيد|رمضان|الاستقلال|المولد|رأس السنة|الإسراء|يوم الجيش|يوم العمال|تهنئة|جمعة مباركة/.test(intentText);\n  const isRecruitment = /recruitment|hiring|career|job vacancy|job posting|توظيف|وظيفة|شاغر/.test(intentText);\n  const intentRule = isOccasion\n    ? 'Create a respectful, elegant, culturally appropriate photorealistic scene for the named occasion as celebrated in Jordan (for example Ramadan lanterns, Eid gatherings, Jordanian flag for Independence Day). Do not show installation work, technicians, equipment, promotional offers, or unrelated technical scenes unless the creative brief explicitly requires them.'\n    : isRecruitment\n      ? 'Create an authentic photorealistic recruitment scene showing a professional relevant to the supplied job role in a credible work environment. Do not show vacancy text, salary text, unrelated maintenance work, or invented qualifications.'\n      : 'Show the exact named Peak PV service in a real Jordanian setting: solar panels on a flat concrete rooftop with water tanks and stone buildings, a solar array at a farm, poultry house, well pump or small workshop, a home EV charger on a villa wall, EV charging points in a residential building garage or hotel/company parking with an electric car plugged in, or a homeowner reviewing an electricity bill with an engineer. When people work, show qualified installers with helmets, harnesses and gloves mounting panels on a galvanized steel frame, wiring an inverter safely or mounting a wall charger with neat conduit. Never show a commercial shop, mall or supermarket as the customer.';\n  return JSON.stringify({\n    model: $('Runtime Configuration').first().json.image_model,\n    prompt: [\n      'Create one photorealistic social media marketing photograph for this company: ' + (row.company_name || 'the supplied company') + '.',\n      'Official website-grounded company context: ' + (row.brand_context || ''),\n      'Brand primary color: ' + (row.brand_primary_color || 'not supplied') + '. Brand secondary color: ' + (row.brand_secondary_color || 'not supplied') + '.',\n      'Brand visual direction: ' + (row.image_branding_instructions || 'Use a clean, consistent professional visual identity.'),\n      'Apply the supplied brand colors naturally through uniforms, equipment accents, environmental details, and color grading. Do not turn the scene into a flat graphic.',\n      'CRITICAL: The generated photograph must contain absolutely NO text of any kind - no letters, words, numbers, captions, labels, signs, invented logos, fake brand names, or watermarks anywhere in the frame. Leave clean negative space for a later official-logo overlay.',\n      'Target social platform: ' + (row.target_platform || 'social media'),\n      'Content category or primary subject: ' + (row.content_pillar || ''),\n      'Post topic and source details: ' + (row.topic_idea || ''),\n      'Creative brief: ' + (lock.image_brief || ''),\n      intentRule,\n      'Focus on one coherent subject only. Do not combine unrelated services, roles, celebrations, or scenes. People and buildings must look authentically Jordanian / Levantine.',\n      'Editorial commercial photography with natural skin tones, realistic materials, accurate anatomy and tools, controlled highlights, crisp subject detail, subtle depth of field, clean color separation, believable documentary realism, and no plastic or overprocessed AI look.',\n      'No invented logos, readable text, watermarks, customer data, prices, salary text, maps, dramatic hazards, sparks, flames, unsafe work, before-and-after layout, or unrelated collages.',\n      row.target_platform === 'instagram'\n        ? 'Compose in portrait format with the primary subject centered and safe for a 4:5 Instagram crop.'\n        : 'Compose in landscape format with the primary subject centered and safe for social-media cropping.'\n    ].join('\\n'),\n    size: row.target_platform === 'instagram' ? '1536x1920' : '2048x1152',\n    quality: $('Runtime Configuration').first().json.image_quality || 'high',\n    output_format: 'jpeg',\n    output_compression: Number($('Runtime Configuration').first().json.image_compression || 92),\n    n: 1\n  });\n})() }}",
         "method": "POST",
+        "url": "https://api.openai.com/v1/images/generations",
+        "authentication": "predefinedCredentialType",
         "nodeCredentialType": "openAiApi",
-        "options": {
-          "timeout": 360000
-        },
         "sendBody": true,
         "specifyBody": "json",
-        "url": "https://api.openai.com/v1/images/generations"
+        "jsonBody": "={{ (() => {\n  const row = $('Validate and Classify Queue Rows').item.json;\n  const lock = $('Prepare Image Lock').item.json;\n  const intentText = [row.campaign, row.content_pillar, row.topic_idea].map(v => String(v || '')).join(' ').toLowerCase();\n  const isOccasion = /social occasion|holiday|eid|ramadan|christmas|easter|new year|thanksgiving|labor day|independence day|good friday|palm sunday|mawlid|women.?s day|mother.?s day|army day|teacher.?s day|مناسبة|عيد|رمضان|الاستقلال|المولد|رأس السنة|الإسراء|يوم الجيش|يوم العمال|تهنئة|جمعة مباركة/.test(intentText);\n  const isRecruitment = /recruitment|hiring|career|job vacancy|job posting|توظيف|وظيفة|شاغر/.test(intentText);\n  const intentRule = isOccasion\n    ? 'Create a respectful, elegant, culturally appropriate photorealistic scene for the named occasion as celebrated in Jordan (for example Ramadan lanterns, Eid gatherings, Jordanian flag for Independence Day). Do not show installation work, technicians, equipment, promotional offers, or unrelated technical scenes unless the creative brief explicitly requires them.'\n    : isRecruitment\n      ? 'Create an authentic photorealistic recruitment scene showing a professional relevant to the supplied job role in a credible work environment. Do not show vacancy text, salary text, unrelated maintenance work, or invented qualifications.'\n      : 'Show the exact named Peak PV service in a real Jordanian setting: solar panels on a flat concrete rooftop with water tanks and stone buildings, a solar array at a farm, poultry house, well pump or small workshop, a home EV charger on a villa wall, EV charging points in a residential building garage or hotel/company parking with an electric car plugged in, or a homeowner reviewing an electricity bill with an engineer. When people work, show qualified installers with helmets, harnesses and gloves mounting panels on a galvanized steel frame, wiring an inverter safely or mounting a wall charger with neat conduit. Never show a commercial shop, mall or supermarket as the customer.';\n  return JSON.stringify({\n    model: $('Runtime Configuration').first().json.image_model,\n    prompt: [\n      'Create one photorealistic social media marketing photograph for this company: ' + (row.company_name || 'the supplied company') + '.',\n      'Official website-grounded company context: ' + (row.brand_context || ''),\n      'Brand primary color: ' + (row.brand_primary_color || 'not supplied') + '. Brand secondary color: ' + (row.brand_secondary_color || 'not supplied') + '.',\n      'Brand visual direction: ' + (row.image_branding_instructions || 'Use a clean, consistent professional visual identity.'),\n      'Apply the supplied brand colors naturally through uniforms, equipment accents, environmental details, and color grading. Do not turn the scene into a flat graphic.',\n      'CRITICAL: The generated photograph must contain absolutely NO text of any kind - no letters, words, numbers, captions, labels, signs, invented logos, fake brand names, or watermarks anywhere in the frame. Leave clean negative space for a later official-logo overlay.',\n      'Target social platform: ' + (row.target_platform || 'social media'),\n      'Content category or primary subject: ' + (row.content_pillar || ''),\n      'Post topic and source details: ' + (row.topic_idea || ''),\n      'Creative brief: ' + (lock.image_brief || ''),\n      intentRule,\n      'Focus on one coherent subject only. Do not combine unrelated services, roles, celebrations, or scenes. People and buildings must look authentically Jordanian / Levantine.',\n      'Editorial commercial photography with natural skin tones, realistic materials, accurate anatomy and tools, controlled highlights, crisp subject detail, subtle depth of field, clean color separation, believable documentary realism, and no plastic or overprocessed AI look.',\n      'No invented logos, readable text, watermarks, customer data, prices, salary text, maps, dramatic hazards, sparks, flames, unsafe work, before-and-after layout, or unrelated collages.',\n      row.target_platform === 'instagram'\n        ? 'Compose in portrait format with the primary subject centered and safe for a 4:5 Instagram crop.'\n        : 'Compose in landscape format with the primary subject centered and safe for social-media cropping.'\n    ].join('\\n'),\n    size: row.target_platform === 'instagram' ? '1536x1920' : '2048x1152',\n    quality: $('Runtime Configuration').first().json.image_quality || 'high',\n    output_format: 'jpeg',\n    output_compression: Number($('Runtime Configuration').first().json.image_compression || 92),\n    n: 1\n  });\n})() }}",
+        "options": {
+          "timeout": 360000
+        }
       },
       "id": "9af1d846-5dc7-464b-bbab-d2edf0f79a86",
       "name": "Generate Content Image",
@@ -1722,354 +1539,6 @@
     },
     {
       "parameters": {
-        "url": "https://fbkrrzlwmygzdoozrlgg.supabase.co/rest/v1/weekly_content_briefs?select=*",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 60000
-        }
-      },
-      "id": "f1c4788b-d7f4-4cc6-9032-eb034158ae23",
-      "name": "Read Approved Weekly Briefs",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1296,
-        448
-      ],
-      "alwaysOutputData": true,
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000
-    },
-    {
-      "parameters": {
-        "jsCode": "const clean = value => String(value ?? '').trim();\nconst lower = value => clean(value).toLowerCase();\nconst now = new Date();\nconst nowMs = now.getTime();\nconst parts = new Intl.DateTimeFormat('en-US', {\n  timeZone: 'Asia/Amman', year: 'numeric', month: '2-digit', day: '2-digit'\n}).formatToParts(now).reduce((acc, part) => { acc[part.type] = part.value; return acc; }, {});\nconst today = parts.year + '-' + parts.month + '-' + parts.day;\nconst selected = $input.all().map(item => item.json).filter(row => {\n  const approved = lower(row.approval_status) === 'approved';\n  const pending = !clean(row.processing_status) || lower(row.processing_status) === 'pending';\n  const notExpired = !clean(row.week_end) || clean(row.week_end) >= today;\n  const generationMs = clean(row.generate_at) ? Date.parse(row.generate_at) : nowMs;\n  const generationDue = Number.isFinite(generationMs) && generationMs <= nowMs;\n  return clean(row.brief_id) && approved && pending && notExpired && generationDue;\n}).sort((a, b) => clean(b.updated_at || b.approved_at).localeCompare(clean(a.updated_at || a.approved_at)));\nconst byBrand = new Map();\nfor (const row of selected) if (!byBrand.has(lower(row.brand_id))) byBrand.set(lower(row.brand_id), row);\nreturn [...byBrand.values()].map((row, index) => ({ json: row, pairedItem: { item: index } }));"
-      },
-      "id": "3d5a317a-8368-4ab5-8df5-6e7e0b9410d6",
-      "name": "Select Current Approved Briefs",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1520,
-        448
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const brands = $input.all().map(item => item.json).filter(row => String(row.brand_id || '').trim());\nreturn { json: { brands } };"
-      },
-      "id": "ab970882-40b6-4319-8921-a86c1cee20cc",
-      "name": "Collapse Active Weekly Brands",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1072,
-        448
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const clean = value => String(value ?? '').trim();\nconst lower = value => clean(value).toLowerCase();\nconst brands = $('Collapse Active Weekly Brands').first().json.brands || [];\nconst briefs = $input.all().map(item => item.json).filter(row => clean(row.brief_id));\nreturn brands.map(brand => {\n  const brief = briefs.find(row => lower(row.brand_id) === lower(brand.brand_id));\n  if (!brief) return null;\n  return { json: {\n    ...brand,\n    weekly_brief_id: clean(brief.brief_id), week_start: clean(brief.week_start), week_end: clean(brief.week_end),\n    weekly_objective: clean(brief.objective), weekly_campaign: clean(brief.campaign),\n    weekly_posts_count: Math.max(1, Math.min(7, Number(brief.posts_count || 1))),\n    weekly_platforms: clean(brief.platforms), weekly_required_topics: clean(brief.required_topics),\n    weekly_excluded_topics: clean(brief.excluded_topics),\n    target_audience: clean(brief.target_audience_override) || clean(brand.target_audience),\n    tone_of_voice: clean(brief.tone_override) || clean(brand.tone_of_voice),\n    weekly_special_offer: clean(brief.special_offer), default_cta: clean(brief.cta_override) || clean(brand.default_cta),\n    weekly_image_style: clean(brief.image_style), weekly_extra_instructions: clean(brief.extra_instructions),\n    weekly_generate_at: clean(brief.generate_at), weekly_posting_schedule: clean(brief.posting_schedule),\n    weekly_media_type: clean(brief.media_type) || 'Image', weekly_video_style: clean(brief.video_style),\n    weekly_video_duration_seconds: Math.max(3, Math.min(10, Number(brief.video_duration_seconds || 8))),\n    weekly_video_aspect_ratio: clean(brief.video_aspect_ratio) || '9:16'\n  } };\n}).filter(Boolean);"
-      },
-      "id": "8c582158-d7bd-474e-9a03-c1e41a1fe2c8",
-      "name": "Attach Approved Weekly Briefs",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1744,
-        448
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const now = new Date().toISOString();\nconst seen = new Set();\nconst out = [];\nfor (const item of $('Attach Approved Weekly Briefs').all()) {\n  const briefId = String(item.json.weekly_brief_id || '').trim();\n  if (!briefId || seen.has(briefId)) continue;\n  seen.add(briefId);\n  out.push({ json: {\n    brief_id: briefId,\n    processing_status: 'Processed',\n    processed_at: now,\n    updated_at: now,\n    last_error: ''\n  } });\n}\nreturn out;"
-      },
-      "id": "e4fcc9f5-1735-4692-a403-0d3b10595e41",
-      "name": "Prepare Processed Brief Updates",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2896,
-        448
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://fbkrrzlwmygzdoozrlgg.supabase.co/rest/v1/weekly_content_briefs",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "resolution=merge-duplicates,return=representation"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ \"brief_id\": $json.brief_id, \"last_error\": $json.last_error, \"processed_at\": $json.processed_at, \"processing_status\": $json.processing_status, \"updated_at\": $json.updated_at }) }}",
-        "options": {
-          "timeout": 60000
-        }
-      },
-      "id": "f6a0dfc5-0c74-40e7-91ba-03c2a4703501",
-      "name": "Mark Weekly Briefs Processed",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        3120,
-        448
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000
-    },
-    {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "minutes",
-              "minutesInterval": 1
-            }
-          ]
-        }
-      },
-      "id": "9df28ba2-c8f7-46a7-b4d1-f1bffc73f54a",
-      "name": "Job Intake - Every 5 Minutes",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        176,
-        80
-      ],
-      "disabled": true
-    },
-    {
-      "parameters": {
-        "url": "https://fbkrrzlwmygzdoozrlgg.supabase.co/rest/v1/brands?select=*",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 60000
-        }
-      },
-      "id": "2f771e60-35ba-43a5-9345-85c4ee4aa571",
-      "name": "Read Brands for Job Intake",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        400,
-        80
-      ],
-      "alwaysOutputData": true,
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000
-    },
-    {
-      "parameters": {
-        "jsCode": "const brands = $input.all().map(item => item.json).filter(row => String(row.brand_id || '').trim());\nreturn { json: { brands } };"
-      },
-      "id": "715ff2f0-0088-42cd-86cd-6f8b8b18c91e",
-      "name": "Collapse Job Brand Context",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        624,
-        80
-      ]
-    },
-    {
-      "parameters": {
-        "url": "https://fbkrrzlwmygzdoozrlgg.supabase.co/rest/v1/job_postings?select=*",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 60000
-        }
-      },
-      "id": "61bf1a71-cdbc-4edc-9804-b6cf02723c50",
-      "name": "Read Approved Job Postings",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        848,
-        80
-      ],
-      "alwaysOutputData": true,
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000
-    },
-    {
-      "parameters": {
-        "jsCode": "const clean = value => String(value ?? '').trim();\nconst lower = value => clean(value).toLowerCase();\nconst nowMs = Date.now();\nreturn $input.all().filter(item => {\n  const row = item.json;\n  const approved = lower(row.approval_status) === 'approved';\n  const pending = !clean(row.processing_status) || lower(row.processing_status) === 'pending';\n  const generationMs = clean(row.generate_at) ? Date.parse(row.generate_at) : nowMs;\n  const generationDue = Number.isFinite(generationMs) && generationMs <= nowMs;\n  return clean(row.job_id) && approved && pending && generationDue;\n});"
-      },
-      "id": "86e8a00d-21e3-4e6d-adc7-39dfd3d40668",
-      "name": "Select Approved Job Postings",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1072,
-        80
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const jobs = $input.all().map(item => item.json);\nconst brands = $('Collapse Job Brand Context').first().json.brands || [];\nconst clean = value => String(value ?? '').trim();\nconst lower = value => clean(value).toLowerCase();\nconst truthy = value => ['true','yes','1','y','active','enabled'].includes(lower(value));\nconst normalizeMedia = value => {\n  const key = lower(value);\n  if (key.includes('image') && key.includes('video')) return 'Image + Short Video';\n  if (key.includes('video')) return 'Short Video';\n  return 'Image';\n};\nconst now = new Date().toISOString();\nconst out = [];\nfor (const job of jobs) {\n  const brand = brands.find(row => lower(row.brand_id) === lower(job.brand_id));\n  if (!brand) continue;\n  const selected = clean(job.platforms).toLowerCase().split(/[;,\\s]+/).filter(Boolean);\n  const wants = platform => selected.includes(platform);\n  const media = normalizeMedia(job.media_type);\n  const needsImage = media.includes('Image');\n  const needsVideo = media.includes('Video');\n  const details = [\n    'Create an organic recruitment post for ' + clean(job.company_name || brand.company_name) + '.',\n    'Job title: ' + clean(job.job_title), 'Department: ' + clean(job.department),\n    'Employment type: ' + clean(job.employment_type), 'Workplace type: ' + clean(job.workplace_type),\n    'Location: ' + clean(job.location), 'Job summary: ' + clean(job.job_summary),\n    'Responsibilities: ' + clean(job.responsibilities), 'Requirements: ' + clean(job.requirements),\n    'Preferred qualifications: ' + clean(job.preferred_qualifications),\n    'Compensation supplied by employer: ' + clean(job.compensation),\n    'Application URL: ' + clean(job.application_url), 'Application email: ' + clean(job.application_email),\n    'Application phone: ' + clean(job.application_phone), 'Extra instructions: ' + clean(job.extra_instructions),\n    'Do not invent any missing fact, compensation, qualification, location, contact detail, or benefit.'\n  ].join('\\n');\n  out.push({ json: {\n    id: 'job-' + clean(job.job_id) + '-' + Date.now().toString(36), brand_id: clean(job.brand_id),\n    campaign: 'Hiring - ' + clean(job.job_title), content_pillar: 'Recruitment - ' + clean(job.job_title),\n    topic_idea: details, target_audience: 'Qualified candidates for ' + clean(job.job_title) + (clean(job.location) ? ' in ' + clean(job.location) : ''),\n    tone_of_voice: clean(brand.tone_of_voice) || 'Professional, clear, inclusive, and factual.',\n    scheduled_at: clean(job.scheduled_at) || now, status: 'Needs Draft',\n    generated_linkedin: '', generated_facebook: '', generated_instagram: '', image_url: '',\n    image_brief: clean(job.image_style) || 'Photorealistic recruitment image showing a professional relevant to the exact role in a credible workplace, without text or logos.',\n    link_url: clean(job.application_url), media_type: media,\n    video_brief: clean(job.video_brief), video_script: '', video_status: needsVideo ? 'Pending' : 'Not Requested',\n    video_url: '', video_file_id: '', video_attempts: 0, video_provider: '', video_style: clean(job.video_style),\n    video_duration_seconds: Math.max(3, Math.min(10, Number(job.video_duration_seconds || 8))),\n    video_aspect_ratio: clean(job.video_aspect_ratio) || '9:16',\n    publish_facebook: wants('facebook') && truthy(brand.publish_facebook),\n    publish_instagram: wants('instagram') && truthy(brand.publish_instagram),\n    publish_linkedin: wants('linkedin') && truthy(brand.publish_linkedin),\n    facebook_status: 'Pending', facebook_post_id: '', facebook_attempts: 0,\n    instagram_status: 'Pending', instagram_post_id: '', instagram_attempts: 0,\n    linkedin_status: 'Pending', linkedin_post_id: '', linkedin_attempts: 0,\n    last_error: '', next_retry_at: '', approved_by: '', approved_at: '', published_at: '', updated_at: now,\n    image_status: needsImage ? 'Pending' : 'Not Requested', image_file_id: '', image_attempts: 0\n  } });\n}\nreturn out;"
-      },
-      "id": "de269c85-e114-42ee-9f3f-957d521bebe1",
-      "name": "Build Job Queue Rows",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1296,
-        80
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://fbkrrzlwmygzdoozrlgg.supabase.co/rest/v1/content_queue",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {
-          "timeout": 60000
-        }
-      },
-      "id": "efde1fd6-b7fb-400d-871a-334a4151583d",
-      "name": "Append Job Post to Queue",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1520,
-        80
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000
-    },
-    {
-      "parameters": {
-        "jsCode": "const now = new Date().toISOString();\nreturn $('Select Approved Job Postings').all().map(item => ({ json: {\n  ...item.json,\n  processing_status: 'Processed',\n  processed_at: now,\n  updated_at: now,\n  last_error: ''\n} }));"
-      },
-      "id": "7048f7b3-6113-49ab-9219-ffcfd89da5af",
-      "name": "Prepare Processed Job Updates",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1744,
-        80
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://fbkrrzlwmygzdoozrlgg.supabase.co/rest/v1/job_postings",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "resolution=merge-duplicates,return=representation"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ \"application_email\": $json.application_email, \"application_phone\": $json.application_phone, \"application_url\": $json.application_url, \"approval_status\": $json.approval_status, \"approved_at\": $json.approved_at, \"approved_by\": $json.approved_by, \"brand_id\": $json.brand_id, \"chat_session_id\": $json.chat_session_id, \"company_name\": $json.company_name, \"compensation\": $json.compensation, \"created_at\": $json.created_at, \"department\": $json.department, \"employment_type\": $json.employment_type, \"extra_instructions\": $json.extra_instructions, \"generate_at\": $json.generate_at, \"image_style\": $json.image_style, \"job_id\": $json.job_id, \"job_summary\": $json.job_summary, \"job_title\": $json.job_title, \"last_error\": $json.last_error, \"location\": $json.location, \"media_type\": $json.media_type, \"platforms\": $json.platforms, \"preferred_qualifications\": $json.preferred_qualifications, \"processed_at\": $json.processed_at, \"processing_status\": $json.processing_status, \"requirements\": $json.requirements, \"responsibilities\": $json.responsibilities, \"scheduled_at\": $json.scheduled_at, \"updated_at\": $json.updated_at, \"video_aspect_ratio\": $json.video_aspect_ratio, \"video_brief\": $json.video_brief, \"video_duration_seconds\": $json.video_duration_seconds, \"video_style\": $json.video_style, \"workplace_type\": $json.workplace_type }) }}",
-        "options": {
-          "timeout": 60000
-        }
-      },
-      "id": "7b216966-83c2-4b2e-9aee-620defd4a595",
-      "name": "Mark Job Posting Processed",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1968,
-        80
-      ],
-      "alwaysOutputData": true,
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000
-    },
-    {
-      "parameters": {
-        "content": "## Job advertising\nApproved job records become Content_Queue drafts (Arabic copy + image) and stay at **Awaiting Approval**. Nothing is published until approved and the Facebook/Instagram connection is active.",
-        "height": 220,
-        "width": 760
-      },
-      "id": "55ff0ed4-02b5-45bc-85b5-efd7fc95d3fe",
-      "name": "MVP SAFETY - Review Before Publishing",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        2208,
-        0
-      ]
-    },
-    {
-      "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
@@ -2211,8 +1680,7 @@
       "position": [
         176,
         6480
-      ],
-      "disabled": false
+      ]
     },
     {
       "parameters": {
@@ -2829,10 +2297,10 @@
     },
     {
       "parameters": {
-        "batching": {},
-        "hasOutputParser": true,
         "promptType": "define",
-        "text": "=You are the final senior social-media editor for Peak PV, a Jordanian solar and EV-charger company.\n\nAuthoritative source:\nCompany: {{ $('Validate and Classify Queue Rows').item.json.company_name }}\nPlatform: {{ $('Validate and Classify Queue Rows').item.json.target_platform }}\nCampaign: {{ $('Validate and Classify Queue Rows').item.json.campaign }}\nContent pillar: {{ $('Validate and Classify Queue Rows').item.json.content_pillar }}\nTopic: {{ $('Validate and Classify Queue Rows').item.json.topic_idea }}\nService facts: {{ $('Validate and Classify Queue Rows').item.json.service_facts || 'No additional service facts supplied.' }}\nAudience: {{ $('Validate and Classify Queue Rows').item.json.target_audience || $('Validate and Classify Queue Rows').item.json.brand_target_audience }}\nTone: {{ $('Validate and Classify Queue Rows').item.json.tone_of_voice || $('Validate and Classify Queue Rows').item.json.brand_tone_of_voice }}\nLanguage: {{ $('Validate and Classify Queue Rows').item.json.content_language || 'Arabic (simple Jordanian dialect)' }}\nMedia type: {{ $('Validate and Classify Queue Rows').item.json.media_type || 'Image' }}\n\nCandidate package:\n{{ JSON.stringify($json.output ?? $json) }}\n\nPolish this package before it is saved.\n- Preserve the exact source intent, approved facts, target platform and contact-handling rules.\n- Customer copy must read as natural, simple Jordanian Arabic that a homeowner or farmer understands at once. Fix any Egyptian, Gulf or stiff formal phrasing and any awkward machine translation.\n- Customer copy is Arabic ONLY: translate any English sentence, CTA or hashtag into Arabic. The only Latin text allowed is the brand name \"Peak PV\".\n- image_brief stays in English (internal). video_brief and video_script must be empty strings: images only, no video.\n- Rewrite only the target platform field; keep the other platform fields empty.\n- Strengthen the hook, clarity, specificity and the WhatsApp CTA (bill photo for solar, car type and location for EV charging).\n- Remove repetition, filler, hype, excess emojis and any unsupported claim: prices, exact savings, payback years, \"zero bill\", guarantees, statistics, licensing claims for Peak PV itself.\n- Remove any reference that targets commercial shops, stores, supermarkets, restaurants or offices.\n- Facebook around 50-110 words, Instagram around 40-90 words with at most 8 Arabic-only hashtags, LinkedIn around 80-180 words.\n- Do not add phone, URL, prices or availability. The workflow appends verified contacts later.\n- Keep image_brief as one photorealistic frame in an authentic Jordanian setting with correct safety gear.\n- Text Only: image_brief, video_brief, video_script empty. Image-only: video fields empty. Video-only: image_brief empty.\nReturn only the required structured fields.\n"
+        "text": "=You are the final senior social-media editor for Peak PV, a Jordanian solar and EV-charger company.\n\nAuthoritative source:\nCompany: {{ $('Validate and Classify Queue Rows').item.json.company_name }}\nPlatform: {{ $('Validate and Classify Queue Rows').item.json.target_platform }}\nCampaign: {{ $('Validate and Classify Queue Rows').item.json.campaign }}\nContent pillar: {{ $('Validate and Classify Queue Rows').item.json.content_pillar }}\nTopic: {{ $('Validate and Classify Queue Rows').item.json.topic_idea }}\nService facts: {{ $('Validate and Classify Queue Rows').item.json.service_facts || 'No additional service facts supplied.' }}\nAudience: {{ $('Validate and Classify Queue Rows').item.json.target_audience || $('Validate and Classify Queue Rows').item.json.brand_target_audience }}\nTone: {{ $('Validate and Classify Queue Rows').item.json.tone_of_voice || $('Validate and Classify Queue Rows').item.json.brand_tone_of_voice }}\nLanguage: {{ $('Validate and Classify Queue Rows').item.json.content_language || 'Arabic (simple Jordanian dialect)' }}\nMedia type: {{ $('Validate and Classify Queue Rows').item.json.media_type || 'Image' }}\n\nCandidate package:\n{{ JSON.stringify($json.output ?? $json) }}\n\nPolish this package before it is saved.\n- Preserve the exact source intent, approved facts, target platform and contact-handling rules.\n- Customer copy must read as natural, simple Jordanian Arabic that a homeowner or farmer understands at once. Fix any Egyptian, Gulf or stiff formal phrasing and any awkward machine translation.\n- Customer copy is Arabic ONLY: translate any English sentence, CTA or hashtag into Arabic. The only Latin text allowed is the brand name \"Peak PV\".\n- image_brief stays in English (internal). video_brief and video_script must be empty strings: images only, no video.\n- Rewrite only the target platform field; keep the other platform fields empty.\n- Strengthen the hook, clarity, specificity and the WhatsApp CTA (bill photo for solar, car type and location for EV charging).\n- Remove repetition, filler, hype, excess emojis and any unsupported claim: prices, exact savings, payback years, \"zero bill\", guarantees, statistics, licensing claims for Peak PV itself.\n- Remove any reference that targets commercial shops, stores, supermarkets, restaurants or offices.\n- Facebook around 50-110 words, Instagram around 40-90 words with at most 8 Arabic-only hashtags, LinkedIn around 80-180 words.\n- Do not add phone, URL, prices or availability. The workflow appends verified contacts later.\n- Keep image_brief as one photorealistic frame in an authentic Jordanian setting with correct safety gear.\n- Text Only: image_brief, video_brief, video_script empty. Image-only: video fields empty. Video-only: image_brief empty.\nReturn only the required structured fields.\n",
+        "hasOutputParser": true,
+        "batching": {}
       },
       "id": "f0caff81-74cc-45a7-b9cf-a277f239bb34",
       "name": "Quality Polish Platform Draft",
@@ -2894,14 +2362,6 @@
       "webhookId": "31ff8ae7-0c7b-473c-bf2e-19b4d8844f82"
     },
     {
-      "id": "4b7cc8e1-b5d2-4da1-90d2-f43be4a9a1d7",
-      "name": "LinkedIn Has Image?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        2032,
-        3520
-      ],
       "parameters": {
         "conditions": {
           "combinator": "and",
@@ -2925,20 +2385,23 @@
           }
         },
         "options": {}
-      }
+      },
+      "id": "4b7cc8e1-b5d2-4da1-90d2-f43be4a9a1d7",
+      "name": "LinkedIn Has Image?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2032,
+        3520
+      ]
     },
     {
-      "id": "c9be7d86-a8c5-4009-9a9b-acd1c773bf94",
-      "name": "LinkedIn - Init Image Upload",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2252,
-        3400
-      ],
       "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/rest/images?action=initializeUpload",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
@@ -2955,8 +2418,9 @@
             }
           ]
         },
+        "sendBody": true,
+        "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ initializeUploadRequest: { owner: $json.linkedin_author } }) }}",
-        "method": "POST",
         "options": {
           "response": {
             "response": {
@@ -2965,48 +2429,46 @@
               "responseFormat": "json"
             }
           }
-        },
-        "sendBody": true,
-        "sendHeaders": true,
-        "specifyBody": "json",
-        "url": "https://api.linkedin.com/rest/images?action=initializeUpload"
-      }
-    },
-    {
-      "id": "3735e0a5-52c8-4157-9fe3-083578dffc49",
-      "name": "LinkedIn - Download Image",
+        }
+      },
+      "id": "c9be7d86-a8c5-4009-9a9b-acd1c773bf94",
+      "name": "LinkedIn - Init Image Upload",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2472,
-        3400
-      ],
+        2256,
+        3408
+      ]
+    },
+    {
       "parameters": {
+        "url": "={{ $('Build Platform Jobs').item.json.image_url }}",
         "options": {
           "response": {
             "response": {
               "responseFormat": "file"
             }
           }
-        },
-        "url": "={{ $('Build Platform Jobs').item.json.image_url }}"
-      }
-    },
-    {
-      "id": "1389b144-cb7a-41b9-9868-eff9628f84ad",
-      "name": "LinkedIn - Upload Image",
+        }
+      },
+      "id": "3735e0a5-52c8-4157-9fe3-083578dffc49",
+      "name": "LinkedIn - Download Image",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2692,
-        3400
-      ],
+        2480,
+        3408
+      ]
+    },
+    {
       "parameters": {
-        "authentication": "genericCredentialType",
-        "contentType": "binaryData",
-        "genericAuthType": "httpHeaderAuth",
-        "inputDataFieldName": "data",
         "method": "PUT",
+        "url": "={{ $('LinkedIn - Init Image Upload').item.json.body.value.uploadUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
         "options": {
           "response": {
             "response": {
@@ -3015,20 +2477,18 @@
               "responseFormat": "json"
             }
           }
-        },
-        "sendBody": true,
-        "url": "={{ $('LinkedIn - Init Image Upload').item.json.body.value.uploadUrl }}"
-      }
+        }
+      },
+      "id": "1389b144-cb7a-41b9-9868-eff9628f84ad",
+      "name": "LinkedIn - Upload Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2704,
+        3408
+      ]
     },
     {
-      "id": "51fc240b-f6d8-4ba3-ab3e-70c366132bc8",
-      "name": "Telegram Channel Has Image?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        764,
-        4004
-      ],
       "parameters": {
         "conditions": {
           "combinator": "and",
@@ -3052,71 +2512,74 @@
           }
         },
         "options": {}
-      }
+      },
+      "id": "51fc240b-f6d8-4ba3-ab3e-70c366132bc8",
+      "name": "Telegram Channel Has Image?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        768,
+        4016
+      ]
     },
     {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $json.telegram_channel_id }}",
+        "file": "={{ $json.image_url }}",
+        "additionalFields": {}
+      },
       "id": "800d4239-dc97-49eb-a554-9db153c2b94a",
       "name": "Telegram Channel - Publish Photo",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        984,
+        992,
         3904
       ],
-      "parameters": {
-        "additionalFields": {},
-        "chatId": "={{ $json.telegram_channel_id }}",
-        "file": "={{ $json.image_url }}",
-        "operation": "sendPhoto"
-      },
-      "onError": "continueRegularOutput",
-      "webhookId": "4111df79-c84f-4ac6-a26a-e292ce2b74c0"
+      "webhookId": "4111df79-c84f-4ac6-a26a-e292ce2b74c0",
+      "onError": "continueRegularOutput"
     },
     {
+      "parameters": {
+        "chatId": "={{ $('Build Platform Jobs').item.json.telegram_channel_id }}",
+        "text": "={{ $('Build Platform Jobs').item.json.copy }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "disable_web_page_preview": true
+        }
+      },
       "id": "35436b96-ef5d-4253-892b-e7f18417484f",
       "name": "Telegram Channel - Publish Text",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1204,
-        4004
+        1216,
+        4016
       ],
-      "parameters": {
-        "additionalFields": {
-          "appendAttribution": false,
-          "disable_web_page_preview": true
-        },
-        "chatId": "={{ $('Build Platform Jobs').item.json.telegram_channel_id }}",
-        "text": "={{ $('Build Platform Jobs').item.json.copy }}"
-      },
-      "onError": "continueRegularOutput",
-      "webhookId": "736ee458-8d1a-470f-8b30-9d12fc64f83b"
+      "webhookId": "736ee458-8d1a-470f-8b30-9d12fc64f83b",
+      "onError": "continueRegularOutput"
     },
     {
+      "parameters": {
+        "jsCode": "const src = $('Build Platform Jobs').item.json;\nconst res = $json || {};\nconst msgId = res.result?.message_id ?? res.message_id ?? '';\nconst ok = !res.error && (res.ok === true || msgId !== '');\nconst error = ok ? '' : String(res.error?.message || res.error || res.description || 'Telegram publishing failed.');\nconst now = new Date();\nreturn { json: {\n  id: src.id,\n  telegram_status: ok ? 'Published' : 'Failed',\n  telegram_post_id: ok ? String(msgId) : '',\n  telegram_attempts: src._attempt,\n  updated_at: now.toISOString(),\n  log_id: src.id + '-telegram-' + Date.now(),\n  post_id: src.id,\n  brand_id: src.brand_id,\n  company_name: src.company_name,\n  platform: 'telegram',\n  platform_status: ok ? 'Published' : 'Failed',\n  platform_post_id: ok ? String(msgId) : '',\n  attempt: src._attempt,\n  error_message: error,\n  platform_published_at: ok ? now.toISOString() : '',\n  logged_at: now.toISOString()\n} };"
+      },
       "id": "804d1622-b43a-4eb5-8937-48a5aa31d412",
       "name": "Normalize Telegram Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1424,
-        4004
-      ],
-      "parameters": {
-        "jsCode": "const src = $('Build Platform Jobs').item.json;\nconst res = $json || {};\nconst msgId = res.result?.message_id ?? res.message_id ?? '';\nconst ok = !res.error && (res.ok === true || msgId !== '');\nconst error = ok ? '' : String(res.error?.message || res.error || res.description || 'Telegram publishing failed.');\nconst now = new Date();\nreturn { json: {\n  id: src.id,\n  telegram_status: ok ? 'Published' : 'Failed',\n  telegram_post_id: ok ? String(msgId) : '',\n  telegram_attempts: src._attempt,\n  updated_at: now.toISOString(),\n  log_id: src.id + '-telegram-' + Date.now(),\n  post_id: src.id,\n  brand_id: src.brand_id,\n  company_name: src.company_name,\n  platform: 'telegram',\n  platform_status: ok ? 'Published' : 'Failed',\n  platform_post_id: ok ? String(msgId) : '',\n  attempt: src._attempt,\n  error_message: error,\n  platform_published_at: ok ? now.toISOString() : '',\n  logged_at: now.toISOString()\n} };"
-      }
+        4016
+      ]
     },
     {
-      "id": "654be29c-fd1a-43e9-b2ac-ba52f1d06f11",
-      "name": "Update Telegram Status",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1644,
-        3924
-      ],
       "parameters": {
+        "method": "POST",
+        "url": "https://fbkrrzlwmygzdoozrlgg.supabase.co/rest/v1/content_queue",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
@@ -3129,29 +2592,38 @@
             }
           ]
         },
-        "jsonBody": "={{ JSON.stringify({ \"id\": $json.id, \"telegram_attempts\": $json.telegram_attempts, \"telegram_post_id\": $json.telegram_post_id, \"telegram_status\": $json.telegram_status, \"updated_at\": $json.updated_at }) }}",
-        "method": "POST",
-        "options": {},
         "sendBody": true,
-        "sendHeaders": true,
         "specifyBody": "json",
-        "url": "https://fbkrrzlwmygzdoozrlgg.supabase.co/rest/v1/content_queue"
-      }
+        "jsonBody": "={{ JSON.stringify({ \"id\": $json.id, \"telegram_attempts\": $json.telegram_attempts, \"telegram_post_id\": $json.telegram_post_id, \"telegram_status\": $json.telegram_status, \"updated_at\": $json.updated_at }) }}",
+        "options": {}
+      },
+      "id": "654be29c-fd1a-43e9-b2ac-ba52f1d06f11",
+      "name": "Update Telegram Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1648,
+        3936
+      ]
     },
     {
+      "parameters": {
+        "jsCode": "// Peak PV: posts are images + Arabic text only on every platform. Video production is switched off.\n// Any row still waiting for a draft or media is converted to media_type = Image before classification.\nconst OPEN = ['needs draft', 'draft requested', 'awaiting approval'];\nreturn $input.all().map(item => {\n  const row = { ...item.json };\n  const state = String(row.status || '').trim().toLowerCase();\n  const media = String(row.media_type || '').trim();\n  if (OPEN.includes(state) && media !== 'Image') {\n    row.media_type = 'Image';\n    row.video_status = 'Not Requested';\n    if (!String(row.image_url || '').trim() && ['', 'not requested'].includes(String(row.image_status || '').trim().toLowerCase())) row.image_status = 'Pending';\n  }\n  return { json: row, pairedItem: item.pairedItem };\n});"
+      },
       "id": "1e828d7b-7f1f-43e7-a94d-dbdfe59d2a64",
       "name": "Force Image Only (no video)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1184,
-        3320
-      ],
-      "parameters": {
-        "jsCode": "// Peak PV: posts are images + Arabic text only on every platform. Video production is switched off.\n// Any row still waiting for a draft or media is converted to media_type = Image before classification.\nconst OPEN = ['needs draft', 'draft requested', 'awaiting approval'];\nreturn $input.all().map(item => {\n  const row = { ...item.json };\n  const state = String(row.status || '').trim().toLowerCase();\n  const media = String(row.media_type || '').trim();\n  if (OPEN.includes(state) && media !== 'Image') {\n    row.media_type = 'Image';\n    row.video_status = 'Not Requested';\n    if (!String(row.image_url || '').trim() && ['', 'not requested'].includes(String(row.image_status || '').trim().toLowerCase())) row.image_status = 'Pending';\n  }\n  return { json: row, pairedItem: item.pairedItem };\n});"
-      }
+        3328
+      ]
     },
     {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// The approved OpenAI image (binary) from before the Drive upload, plus its Drive file id, for the Telegram preview.\nconst source = $('Convert Image to Binary').item;\nconst fileId = String($('Upload Image to Google Drive').item.json.id || '').trim();\nreturn { json: { ...source.json, image_file_id: fileId }, binary: source.binary };"
+      },
       "id": "dbd05ce8-fe1f-4a9f-8e03-bb2713f29215",
       "name": "Attach Image for Preview",
       "type": "n8n-nodes-base.code",
@@ -3159,80 +2631,10 @@
       "position": [
         4032,
         384
-      ],
-      "parameters": {
-        "jsCode": "// The approved OpenAI image (binary) from before the Drive upload, plus its Drive file id, for the Telegram preview.\nconst source = $('Convert Image to Binary').item;\nconst fileId = String($('Upload Image to Google Drive').item.json.id || '').trim();\nreturn { json: { ...source.json, image_file_id: fileId }, binary: source.binary };",
-        "mode": "runOnceForEachItem"
-      }
+      ]
     }
   ],
   "connections": {
-    "Planner Configuration": {
-      "main": [
-        [
-          {
-            "node": "Read Brands for Weekly Plan",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Read Brands for Weekly Plan": {
-      "main": [
-        [
-          {
-            "node": "Filter Active Brands",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Filter Active Brands": {
-      "main": [
-        [
-          {
-            "node": "Collapse Active Weekly Brands",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Generate Weekly Content Plan": {
-      "main": [
-        [
-          {
-            "node": "Create Queue Rows from Weekly Plan",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Weekly Plan Structured Parser": {
-      "ai_outputParser": [
-        [
-          {
-            "node": "Generate Weekly Content Plan",
-            "type": "ai_outputParser",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create Queue Rows from Weekly Plan": {
-      "main": [
-        [
-          {
-            "node": "Append Planned Posts to Queue",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Queue Processor - Every 5 Minutes": {
       "main": [
         [
@@ -3625,11 +3027,6 @@
       "ai_languageModel": [
         [
           {
-            "node": "Generate Weekly Content Plan",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
             "node": "Generate Platform Drafts",
             "type": "ai_languageModel",
             "index": 0
@@ -3740,72 +3137,6 @@
         ]
       ]
     },
-    "Collapse Active Weekly Brands": {
-      "main": [
-        [
-          {
-            "node": "Read Approved Weekly Briefs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Read Approved Weekly Briefs": {
-      "main": [
-        [
-          {
-            "node": "Select Current Approved Briefs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Select Current Approved Briefs": {
-      "main": [
-        [
-          {
-            "node": "Attach Approved Weekly Briefs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Attach Approved Weekly Briefs": {
-      "main": [
-        [
-          {
-            "node": "Generate Weekly Content Plan",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Append Planned Posts to Queue": {
-      "main": [
-        [
-          {
-            "node": "Prepare Processed Brief Updates",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Processed Brief Updates": {
-      "main": [
-        [
-          {
-            "node": "Mark Weekly Briefs Processed",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Generate Content Image": {
       "main": [
         [
@@ -3818,105 +3149,6 @@
         [
           {
             "node": "Prepare Image Failure",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Job Intake - Every 5 Minutes": {
-      "main": [
-        [
-          {
-            "node": "Read Brands for Job Intake",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Read Brands for Job Intake": {
-      "main": [
-        [
-          {
-            "node": "Collapse Job Brand Context",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Collapse Job Brand Context": {
-      "main": [
-        [
-          {
-            "node": "Read Approved Job Postings",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Read Approved Job Postings": {
-      "main": [
-        [
-          {
-            "node": "Select Approved Job Postings",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Select Approved Job Postings": {
-      "main": [
-        [
-          {
-            "node": "Build Job Queue Rows",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build Job Queue Rows": {
-      "main": [
-        [
-          {
-            "node": "Append Job Post to Queue",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Append Job Post to Queue": {
-      "main": [
-        [
-          {
-            "node": "Prepare Processed Job Updates",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Processed Job Updates": {
-      "main": [
-        [
-          {
-            "node": "Mark Job Posting Processed",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Plan Intake - Every 5 Minutes": {
-      "main": [
-        [
-          {
-            "node": "Planner Configuration",
             "type": "main",
             "index": 0
           }
@@ -4439,6 +3671,5 @@
     "timeSavedMode": "fixed",
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": true
-  },
-  "pinData": {}
+  }
 }
