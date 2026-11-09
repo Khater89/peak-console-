@@ -70,27 +70,18 @@
     </div>
 
     <div class="panel">
-      <h2>Service</h2>
-      <p class="sub">Every service any selected company offers. A company that does not offer the one you pick falls back to a rotating pick from its own list — it never advertises work it does not do.</p>
-      <select id="service"><option value="__random__">Random pick from each company's services</option></select>
-    </div>
-
-    <div class="panel">
-      <h2>Platforms &amp; media</h2>
-      <p class="sub">Every post is one image + Arabic text (no video). All platforms are on by default — set one to <strong>Not used</strong> to skip it. The Telegram channel automatically mirrors the Facebook post.</p>
-      <div class="grid" id="platGrid"></div>
+      <h2>Services &amp; platforms</h2>
+      <p class="sub">Tick the platforms for each service. Every tick is one post: one image + Arabic text, written for that service and that platform. The Telegram channel mirrors the Facebook post. A platform marked <em>not connected</em> can be produced and reviewed, but it will not publish until it is connected.</p>
+      <div id="svcMatrix"><span class="empty">Pick a company to see its services.</span></div>
       <div class="grid" id="videoOpts" style="margin-top:16px" hidden>
         <label><span class="lbl">Video style</span>
           <select id="vstyle">
-            <option value="Photorealistic documentary, single continuous shot">Photorealistic documentary</option>
-            <option value="Cinematic commercial, single continuous shot">Cinematic commercial</option>
-            <option value="Social-native handheld, authentic realistic motion, single continuous shot">Social-native handheld</option>
             <option value="Platform-optimized realistic commercial style, single continuous shot" selected>AI-selected realistic</option>
           </select></label>
         <label><span class="lbl">Seconds</span>
-          <select id="vsecs" class="num"><option selected>5</option><option>8</option><option>10</option></select></label>
+          <select id="vsecs" class="num"><option selected>5</option></select></label>
         <label><span class="lbl">Resolution</span>
-          <select id="vres" class="num"><option value="720p" selected>720p</option><option value="1080p">1080p</option></select></label>
+          <select id="vres" class="num"><option value="720p" selected>720p</option></select></label>
       </div>
     </div>
 

@@ -259,34 +259,60 @@ function availableServices(){
              n:Object.keys(e.brands).length, total:ids.length };
   }).sort(function(a,b){ return (b.n - a.n) || a.label.localeCompare(b.label); });
 }
-function renderServices(){
-  var sel = $('#service'), keep = sel.value;
-  var list = availableServices();
-  sel.innerHTML = '<option value="__random__">Random pick from each company\'s services</option>' +
-    list.map(function(s){
-      var extra = (s.total > 1 && s.n < s.total) ? ' (offered by ' + s.n + ' of ' + s.total + ')' : '';
-      return '<option value="' + esc(s.value) + '">' + esc(s.label) + extra + '</option>';
-    }).join('');
-  sel.value = keep && sel.querySelector('option[value="' + CSS.escape(keep) + '"]') ? keep : '__random__';
+/* Which platforms each service goes to. Keys are "service|platform" (service lower-cased),
+   kept across company changes so ticking another company does not wipe the order. */
+var SEL = {};
+function selKey(service, p){ return String(service).toLowerCase() + '|' + p; }
+
+/* A platform is "connected" when at least one selected company has publishing on for it. */
+function platformConnected(p){
+  return chosenBrands().some(function(id){
+    var b = BRANDS.filter(function(x){ return x.brand_id === id; })[0] || {};
+    return b['publish_' + p] === true || String(b['publish_' + p]).toLowerCase() === 'true';
+  });
 }
 
-function renderPlatforms(){
-  $('#platGrid').innerHTML = PLATFORMS.map(function(p){
-    return '<label><span class="lbl">' + PLATNAME[p] + '</span>' +
-      '<select data-plat="' + p + '">' +
-      ['Not used'].concat(MEDIA).map(function(m){
-        return '<option>' + m + '</option>';
-      }).join('') + '</select></label>';
+function renderServices(){
+  var box = $('#svcMatrix');
+  var list = availableServices();
+  if (!chosenBrands().length) { box.innerHTML = '<span class="empty">Pick a company to see its services.</span>'; return; }
+  if (!list.length) { box.innerHTML = '<span class="empty">The selected companies have no active services.</span>'; return; }
+  var head = '<div class="svc-row svc-head"><span></span>' + PLATFORMS.map(function(p){
+    var ok = platformConnected(p);
+    return '<span class="svc-plat">' + PLATNAME[p] +
+      '<small class="' + (ok ? 'ok' : 'off') + '">' + (ok ? 'connected' : 'not connected') + '</small></span>';
+  }).join('') + '</div>';
+  box.innerHTML = head + list.map(function(sv){
+    var extra = (sv.total > 1 && sv.n < sv.total) ? '<small>offered by ' + sv.n + ' of ' + sv.total + '</small>' : '';
+    return '<div class="svc-row"><span class="svc-name">' + esc(sv.label) + extra + '</span>' +
+      PLATFORMS.map(function(p){
+        var on = !!SEL[selKey(sv.value, p)];
+        return '<label class="chip svc-tick" data-on="' + (on ? 1 : 0) + '" title="' + esc(sv.label) + ' on ' + PLATNAME[p] + '">' +
+          '<input type="checkbox" data-svc="' + esc(sv.value) + '" data-plat="' + p + '"' + (on ? ' checked' : '') + '>' +
+          '<span class="svc-mobile">' + PLATNAME[p] + '</span></label>';
+      }).join('') + '</div>';
   }).join('');
-  /* All platforms on by default (Telegram mirrors Facebook); set one to Not used to skip it. */
-  $$('#platGrid select').forEach(function(sel){ sel.value = 'Image'; sel.addEventListener('change', recalc); });
+  $$('#svcMatrix input').forEach(function(i){
+    i.addEventListener('change', function(){
+      var k = selKey(i.dataset.svc, i.dataset.plat);
+      if (i.checked) SEL[k] = { service: i.dataset.svc, platform: i.dataset.plat }; else delete SEL[k];
+      i.closest('.chip').dataset.on = i.checked ? '1' : '0';
+      recalc();
+    });
+  });
 }
-function mediaByPlatform(){
-  var out = {};
-  $$('#platGrid select').forEach(function(s){
-    if (s.value !== 'Not used') out[s.dataset.plat] = s.value;
+function renderPlatforms(){ /* platforms now live inside the service matrix */ }
+
+/* The ticked (service, platform) pairs, in matrix order, limited to services still on screen. */
+function chosenCombos(){
+  var out = [];
+  availableServices().forEach(function(sv){
+    PLATFORMS.forEach(function(p){ if (SEL[selKey(sv.value, p)]) out.push({ service: sv.value, platform: p }); });
   });
   return out;
+}
+function brandOffers(bid, service){
+  return servicesFor(bid).some(function(o){ return (o.option_value||'').toLowerCase() === String(service).toLowerCase(); });
 }
 
 /* ---------- cost, mirroring the engine's actual call chain ---------- */
@@ -301,44 +327,37 @@ function perPost(media){
   return c;
 }
 function recalc(){
-  var brands = chosenBrands(), media = mediaByPlatform(), slots = +$('#plan').value;
-  var anyVideo = Object.keys(media).some(function(p){ return /video/i.test(media[p]); });
-  $('#videoOpts').hidden = !anyVideo;
+  var brands = chosenBrands(), combos = chosenCombos(), slots = +$('#plan').value;
+  $('#videoOpts').hidden = true;
 
-  var posts = 0, cost = 0;
-  brands.forEach(function(){
-    Object.keys(media).forEach(function(p){
-      for (var s = 0; s < slots; s++) { posts++; cost += perPost(media[p]); }
+  var posts = 0, cost = 0, lines = [];
+  var names = {};
+  BRANDS.forEach(function(b){ names[b.brand_id] = b.company_name || b.brand_id; });
+  brands.forEach(function(b){
+    combos.forEach(function(c){
+      if (!brandOffers(b, c.service)) return;
+      posts += slots; cost += slots * perPost('Image');
+      lines.push('<div><b>' + esc(names[b] || b) + '</b> · ' + esc(c.service) + ' · ' + PLATNAME[c.platform] +
+                 (platformConnected(c.platform) ? '' : ' <small class="off">not connected</small>') +
+                 (slots > 1 ? ' · ×' + slots + ' dates' : '') + '</div>');
     });
   });
   $('#cost').textContent = '$' + cost.toFixed(2);
   $('#costMeta').textContent = posts
-    ? posts + (posts === 1 ? ' post' : ' posts') + ' — ' + brands.length + ' × ' +
-      Object.keys(media).length + ' platform' + (Object.keys(media).length === 1 ? '' : 's') + ' × ' + slots + ' slot' + (slots === 1 ? '' : 's')
-    : 'pick a company and at least one platform';
+    ? posts + (posts === 1 ? ' post' : ' posts') + ' — ' + combos.length + ' service/platform pick' +
+      (combos.length === 1 ? '' : 's') + ' × ' + slots + ' slot' + (slots === 1 ? '' : 's')
+    : (brands.length ? 'tick at least one platform for a service' : 'pick a company to begin');
   $('#confirm').disabled = !posts;
 
-  /* Spell out every row that will be created. The platform pickers used to default to
-     "Short Video", so an order could quietly carry two platforms the operator never
-     chose - three posts instead of one. They now default to "Not used", and this list
-     is the second guard: you see the exact rows before you pay for them. */
+  /* You see the exact rows before you pay for them. */
   var pv = $('#plan-preview');
   if (!posts) { pv.hidden = true; pv.innerHTML = ''; }
   else {
-    var names = {};
-    BRANDS.forEach(function(b){ names[b.brand_id] = b.company_name || b.brand_id; });
-    var lines = [];
-    brands.forEach(function(b){
-      Object.keys(media).forEach(function(p){
-        lines.push('<div><b>' + esc(names[b] || b) + '</b> · ' + PLATNAME[p] +
-                   ' · ' + esc(media[p]) + (slots > 1 ? ' · ×' + slots + ' dates' : '') + '</div>');
-      });
-    });
     pv.hidden = false;
     pv.innerHTML = '<div style="color:var(--ink);font-weight:600;margin-bottom:4px">' +
       posts + ' post' + (posts === 1 ? '' : 's') + ' will be created:</div>' + lines.join('');
   }
-  return { posts: posts, cost: cost, brands: brands, media: media, slots: slots };
+  return { posts: posts, cost: cost, brands: brands, combos: combos, slots: slots };
 }
 
 /* ---------- build and send the order ---------- */
@@ -364,26 +383,23 @@ var ANGLES = [
   'trust: engineering design from the real bill and installation through a licensed partner'
 ];
 function buildRows(state){
-  var chosen = $('#service').value, slots = state.slots, rows = [], seq = 0;
+  var slots = state.slots, rows = [], seq = 0;
   var offsets = slots === 7 ? [0,1,2,3,4,5,6] : slots === 4 ? [0,2,4,6] : [0];
   var startDate = $('#startDate').value, hour = +$('#hour').value || 9;
   var vstyle = $('#vstyle').value, vsecs = +$('#vsecs').value;
 
   state.brands.forEach(function(bid, bi){
     var brand = BRANDS.filter(function(b){ return b.brand_id === bid; })[0] || {};
-    var pool = servicesFor(bid);
-    if (!pool.length) throw new Error('No active services for ' + (brand.company_name || bid));
-    var plats = Object.keys(state.media);
+    var combos = state.combos.filter(function(c){ return brandOffers(bid, c.service); });
+    if (!combos.length) return;
 
     offsets.forEach(function(off, si){
-      plats.forEach(function(p, pi){
+      combos.forEach(function(c, pi){
         seq++;
-        var media = state.media[p];
-        var vid = /video/i.test(media), img = /image/i.test(media);
-        var pick = chosen === '__random__' ? null
-          : pool.filter(function(o){ return (o.option_value||'').toLowerCase() === chosen.toLowerCase(); })[0];
-        if (!pick) pick = pool[(si*plats.length + pi + bi) % pool.length];
-        var service = pick.option_value;
+        var p = c.platform, plats = combos;
+        var media = 'Image';
+        var vid = false, img = true;
+        var service = c.service;
         var company = brand.company_name || bid;
         var isEV = /ev|charg/i.test(service);
         var angle = isEV ? EV_ANGLES[(si*plats.length + pi) % EV_ANGLES.length]
@@ -458,13 +474,14 @@ $('#confirm').addEventListener('click', function(){
       btn.disabled = false;
       /* wipe the selection: pressing Confirm twice used to create the order twice */
       $$('#brandChips input').forEach(function(i){ i.checked = false; i.closest('.chip').dataset.on = '0'; });
-      $$('#platGrid select').forEach(function(sel){ sel.value = 'Not used'; });
+      SEL = {};
       renderServices(); recalc();
       loadQueue();
     });
 });
 
 $('#reset').addEventListener('click', function(){
+  SEL = {};
   $$('#brandChips input').forEach(function(i){ i.checked = false; i.closest('.chip').dataset.on = '0'; });
   renderServices(); note($('#orderNote'),'',''); recalc();
 });
