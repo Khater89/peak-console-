@@ -64,3 +64,15 @@ Facebook + Instagram (Meta page token), LinkedIn (own token, company page), and 
 ## Security note
 Like the Madama console, the browser uses the publishable key with `anon` policies: anyone with the link can
 create orders. Keep the link private, or add Supabase Auth and switch the policies to `authenticated`.
+
+## v1.3 — the engine runs only when there is work
+
+- The n8n schedules are **disabled**. Nothing polls n8n any more.
+- A Supabase watcher (`public.peakpv_wake_engine()`, run by `pg_cron` every 5 minutes inside Supabase,
+  which costs no n8n executions) calls the engine's webhook **only** when `content_queue` / `content_audit`
+  has a row the engine can move, and never twice for the same unchanged work (it retries a stuck row at most
+  once an hour).
+- The console wakes the engine through the same function (`rpc/peakpv_wake_engine`, `force = true`): still only
+  when there is work, at most once a minute. The n8n webhook address lives in the `peakpv_engine_wake` table, not in
+  this public repo, so leave *Engine webhook URL* under Connection empty.
+- To pause everything: `update peakpv_engine_wake set enabled = false;`

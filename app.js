@@ -20,7 +20,7 @@
 var DEFAULTS = {
   url:         'https://fbkrrzlwmygzdoozrlgg.supabase.co',
   key:         'sb_publishable_lybmDAdUjmjU0rC7OnnArg_4Ma8voOe',
-  hook:        '',                  // paste your n8n production webhook URL ending in /webhook/peakpv-engine-run
+  hook:        '',                  // leave empty: the engine is woken through Supabase (peakpv_wake_engine). Only for a direct n8n call.
   fn_telegram: 'notify-telegram',   // the slug at the end of the Telegram function's URL
   fn_rewrite:  'rewrite-copy',      // the slug at the end of the rewrite function's URL
   who:         'AbdElRahman'        // the name recorded on approvals
@@ -74,6 +74,29 @@ function api(path, opts){
       return data;
     });
   });
+}
+
+/* ---------- waking the engine ----------
+   Without a webhook URL (the default) the console asks Supabase to wake the engine:
+   public.peakpv_wake_engine() calls n8n only when the queue really has work, and at
+   most once a minute, and the n8n address stays in the database instead of in this
+   public file. A webhook URL under Connection still overrides it. Resolves to
+   'fired', 'idle' (nothing to do), 'busy' (called less than a minute ago) or 'sent'. */
+function wakeEngine(payload){
+  if (CFG.hook) {
+    return fetch(CFG.hook, { method:'POST', headers:{'Content-Type':'text/plain'},   /* simple request: no CORS preflight */
+                             body: JSON.stringify(payload || { source:'console' }) })
+      .then(function(r){
+        if (r.ok) return 'sent';
+        return r.text().then(function(t){
+          var d = null; try { d = JSON.parse(t); } catch(e){}
+          var err = new Error((d && (d.message || d.error)) || t || ('HTTP ' + r.status));
+          err.status = r.status; err.hint = (d && d.hint) || '';
+          throw err;
+        });
+      });
+  }
+  return api('rpc/peakpv_wake_engine', { method:'POST', body:{ force:true } });
 }
 
 /* ---------- Supabase Edge Functions ----------
@@ -423,17 +446,11 @@ $('#confirm').addEventListener('click', function(){
   api('content_queue', { method:'POST', body:rows, prefer:'return=representation' })
     .then(function(saved){
       note($('#orderNote'),'good', saved.length + ' rows created. Waking the engine…');
-      if (!CFG.hook) {
-        note($('#orderNote'),'good', saved.length + ' rows created. No webhook URL set, so run the engine from n8n yourself.');
-        return;
-      }
-      return fetch(CFG.hook, {
-        method:'POST', headers:{'Content-Type':'text/plain'},   /* simple request: no CORS preflight */
-        body: JSON.stringify({ source:'console', count: saved.length, ids: saved.map(function(r){ return r.id; }) })
-      }).then(function(){
+      return wakeEngine({ source:'console', count: saved.length, ids: saved.map(function(r){ return r.id; }) })
+      .then(function(){
         note($('#orderNote'),'good', saved.length + ' rows created and the engine has been started. Watch progress under <strong>Queue</strong>.');
       }).catch(function(){
-        note($('#orderNote'),'bad', saved.length + ' rows were created, but the engine webhook did not answer. Run it from n8n — nothing is lost.');
+        note($('#orderNote'),'bad', saved.length + ' rows were created, but the engine could not be woken. They are safe: the queue watcher picks them up within 5 minutes.');
       });
     })
     .catch(function(e){ note($('#orderNote'),'bad','Could not create the order: ' + esc(e.message)); })
@@ -715,8 +732,7 @@ function publishNow(id){
     .then(function(res){
       if (!res || !res.length){ toast('The database refused it. Run the grants SQL once.'); return; }
       toast('Queued for publishing');
-      if (CFG.hook) fetch(CFG.hook, { method:'POST', headers:{'Content-Type':'text/plain'},   /* simple request: no CORS preflight */
-                                      body: JSON.stringify({ source:'console', action:'publish' }) }).catch(function(){});
+      wakeEngine({ source:'console', action:'publish' }).catch(function(){});
       setTimeout(loadPublish, 4000);
     })
     .catch(function(e){ toast('Failed: ' + e.message); });
@@ -994,39 +1010,29 @@ var AUTO_MAX_SPEND  = 15;                 // dollars of estimated work per run
 var RUN_LABEL = 'Run until done';
 
 function fireWebhook(){
-  /* Content-Type is text/plain ON PURPOSE, and it is the whole reason this used to
-     do nothing at all.
-
-     application/json is not a CORS-safe content type, so the browser insists on
-     sending an OPTIONS preflight first. The Webhook node has no Allowed Origins set,
-     so it never answers that preflight - and the browser then throws the POST away
-     without ever sending it. The engine was never called.
-
-     text/plain makes it a simple request: no preflight, the POST goes straight to
-     n8n. The engine reads nothing out of the body, so the format costs us nothing. */
-  fetch(CFG.hook, { method:'POST', headers:{'Content-Type':'text/plain'},
-                    body: JSON.stringify({ source:'console', action:'run' }) })
-    .then(function(r){
-      /* fetch does NOT reject on 404. An unregistered webhook - the usual symptom of
-         a workflow that is not Active - used to land here and be thrown away silently. */
-      if (r.ok) { if (WATCH) WATCH.trigger = 'ok'; return; }
-      return r.text().then(function(t){
-        var d = null; try { d = JSON.parse(t); } catch(e){}
-        var msg  = (d && (d.message || d.error)) || t || ('HTTP ' + r.status);
-        var hint = (d && d.hint) || '';
-        stopWatch();
-        $('#runSummary').innerHTML = '<div class="note bad"><strong>n8n refused the call — the engine never started.</strong><br>' +
-          esc(msg) + (hint ? '<br><span class="idline">' + esc(hint) + '</span>' : '') +
-          (r.status === 404 ? '<br>Almost always this means the workflow is not <strong>Active</strong> in n8n, ' +
-                              'or the URL is the test one. A production webhook only answers while the workflow is Active.' : '') +
-          '</div>';
-      });
+  /* The webhook path sends text/plain on purpose: application/json would force a CORS
+     preflight the Webhook node never answers, and the POST would never be sent. */
+  wakeEngine({ source:'console', action:'run' })
+    .then(function(res){
+      if (!WATCH) return;
+      WATCH.trigger = res === 'idle' ? 'idle' : 'ok';
+      /* 'busy': the engine was woken less than a minute ago. Ask again shortly
+         instead of letting the stall detector call it a dead engine. */
+      if (res === 'busy') setTimeout(function(){ if (WATCH) fireWebhook(); }, 30000);
     })
-    .catch(function(){
-      /* The request went out but the browser could not read the reply: n8n sends no
-         CORS header back. That is not a failure - the engine may well be running.
-         The database is the honest witness, so keep watching and say so. */
-      if (WATCH) WATCH.trigger = 'unreadable';
+    .catch(function(e){
+      if (e instanceof TypeError) {
+        /* webhook path: the request went out but n8n sends no CORS header back, so the
+           reply is unreadable. Not a failure - the database is the honest witness. */
+        if (WATCH) WATCH.trigger = 'unreadable';
+        return;
+      }
+      stopWatch();
+      $('#runSummary').innerHTML = '<div class="note bad"><strong>The engine was not started.</strong><br>' +
+        esc(e.message) + (e.hint ? '<br><span class="idline">' + esc(e.hint) + '</span>' : '') +
+        (e.status === 404 ? '<br>Almost always this means the workflow is not <strong>Published</strong> in n8n, ' +
+                            'or the URL is the test one.' : '') +
+        '</div>';
     });
 }
 
@@ -1036,11 +1042,7 @@ function startRun(auto){
     toast(WATCH === null ? 'Stopped.' : 'Stopped. The engine finishes the stage it is on.');
     return;
   }
-  if (!CFG.hook){
-    toast('No webhook URL set — add it under Connection, or press Execute in n8n.');
-    return;
-  }
-  if (/\/webhook-test\//.test(CFG.hook)){
+  if (CFG.hook && /\/webhook-test\//.test(CFG.hook)){
     toast('That is the TEST webhook URL. It only fires while n8n is open on “Listen for test event”. ' +
           'For everyday use take the Production URL — the same address with /webhook/ instead of /webhook-test/.');
   }
